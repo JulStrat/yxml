@@ -24,6 +24,7 @@
 #include <string.h>
 
 typedef enum {
+	YXMLS_string,
 /*=STATES=*/
 } yxml_state_t;
 
@@ -231,6 +232,14 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	x->total++;
 
 	switch((yxml_state_t)x->state) {
+	case YXMLS_string:
+		if(ch == *x->string) {
+			x->string++;
+			if(!*x->string)
+				x->state = x->stringstate;
+			return YXML_OK;
+		}
+		break;
 /*=SWITCH=*/
 	}
 	return YXML_ESYN;

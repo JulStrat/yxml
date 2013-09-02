@@ -93,7 +93,9 @@ typedef struct {
 	size_t attrlen;
 	unsigned quote;
 	int reflen;
+	int stringstate;
 	unsigned char ref[YXML_MAX_REF+1];
+	unsigned char *string;
 } yxml_t;
 
 

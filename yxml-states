@@ -29,6 +29,7 @@
 #       | C-char ('|' C-char)*
 #  Act  = FunctionName              # yxml_FunctionName(x, char)
 #       | '$' Varname               # Store current char into Varname
+#       | "string"                  # consume string before moving to next state
 #  Next = State
 #
 # Basically, it's just a short notation for manually writing a DFA. The script
@@ -40,9 +41,7 @@
 #
 # 1. http://www.complang.org/ragel/
 
-init        '\xef' bom1; SP misc0; '<' le0
-bom1        '\xbb' bom2
-bom2        '\xbf' misc0
+init        '\xef' "\xbb\xbf" misc0; SP misc0; '<' le0
 
 # State numbers for the misc/le/lee/leq states:
 #   0 = before XMLDecl, (prolog)
@@ -62,69 +61,40 @@ le0        '!' lee1; '?' leq0; NameStart elemstart elem0
 le1        '!' lee1; '?' pi0; NameStart elemstart elem0
 le2        '!' lee2; '?' pi0; '/' etag0; NameStart elemstart elem0
 
-lee1       '-' comment0; 'D' dt0
-lee2       '-' comment0; '[' cd0
-leq0       'x' xmldecl0; NameStart pi1
+lee1       '-' comment0; 'D' "OCTYPE" dt0
+lee2       '-' comment0; '[' "CDATA[" cd0
+leq0       'x' "ml" xmldecl0; NameStart pi1
 
 
-# XMLDecl, starting from '<?x', returns to misc1
-xmldecl0    'm' xmldecl1
-xmldecl1    'l' xmldecl2
-xmldecl2    SP xmldecl3
-xmldecl3    SP xmldecl3; 'v' ver0
-xmldecl4    SP xmldecl5; '?' xmldecl9
-xmldecl5    SP xmldecl5; '?' xmldecl9; 'e' enc0; 's' std0
-xmldecl6    SP xmldecl7; '?' xmldecl9
-xmldecl7    SP xmldecl7; '?' xmldecl9; 's' std0
-xmldecl8    SP xmldecl8; '?' xmldecl9
-xmldecl9    '>' misc1
+# XMLDecl, starting from '<?xml', returns to misc1
+xmldecl0    SP xmldecl1
+xmldecl1    SP xmldecl1; 'v' "ersion" ver0
+xmldecl2    SP xmldecl3; '?' xmldecl7
+xmldecl3    SP xmldecl3; '?' xmldecl7; 'e' "ncoding" enc0; 's' std0
+xmldecl4    SP xmldecl5; '?' xmldecl7
+xmldecl5    SP xmldecl5; '?' xmldecl7; 's' "tandalone" std0
+xmldecl6    SP xmldecl6; '?' xmldecl7
+xmldecl7    '>' misc1
 
-# VersionInfo, after 'v', returns to xmldecl4
-ver0       'e' ver1
-ver1       'r' ver2
-ver2       's' ver3
-ver3       'i' ver4
-ver4       'o' ver5
-ver5       'n' ver6
-ver6       SP ver6; '=' ver7
-ver7       SP ver7; '\''|'"' $quote ver8
-ver8       '1' ver9
-ver9       '.' ver10
-ver10      Num ver11;
-ver11      Num ver11; $quote xmldecl4
+# VersionInfo, after 'version', returns to xmldecl2
+ver0       SP ver0; '=' ver1
+ver1       SP ver1; '\''|'"' $quote "1." ver2
+ver2       Num ver3;
+ver3       Num ver3; $quote xmldecl2
 
-# EncodingDecl, after 'e', returns to xmldecl6
+# EncodingDecl, after 'e', returns to xmldecl4
 # TODO: Pass the encoding value to the application?
-enc0       'n' enc1
-enc1       'c' enc2
-enc2       'o' enc3
-enc3       'd' enc4
-enc4       'i' enc5
-enc5       'n' enc6
-enc6       'g' enc7
-enc7       SP enc7; '=' enc8
-enc8       SP enc8; '\''|'"' $quote enc9
-enc9       Alpha enc10
-enc10      EncName enc10; $quote xmldecl6
+enc0       SP enc0; '=' enc1
+enc1       SP enc1; '\''|'"' $quote enc2
+enc2       Alpha enc3
+enc3       EncName enc3; $quote xmldecl4
 
-# SDDecl, after 's', returns to xmldecl8
+# SDDecl, after 'standalone', returns to xmldecl6
 # TODO: Pass the standalone flag to the application?
-std0       't' std1
-std1       'a' std2
-std2       'n' std3
-std3       'd' std4
-std4       'a' std5
-std5       'l' std6
-std6       'o' std7
-std7       'n' std8
-std8       'e' std9
-std9       SP std9; '=' std10
-std10      SP std10; '\''|'"' $quote std11
-std11      'y' std12; 'n' std14
-std12      'e' std13;
-std13      's' std15;
-std14      'o' std15;
-std15      $quote xmldecl8
+std0       SP std0; '=' std1
+std1       SP std1; '\''|'"' $quote std2
+std2       'y' "es" std3; 'n' "o" std3
+std3       $quote xmldecl6
 
 
 # Comment, after '<!-', returns to misc1 or misc2
@@ -144,21 +114,14 @@ pi2        '?' pi3; Char pi2
 pi3        '>' retmisc pi3; Char pi2
 
 
-# CDSect, starting from '<![', returns to misc2
-cd0        'C' cd1
-cd1        'D' cd2
-cd2        'A' cd3
-cd3        'T' cd4
-cd4        'A' cd5
-cd5        '[' cd6
-cd6        ']' cd7; Char setdata cd6
-cd7        ']' cd8; Char setdata cd6
-cd8        '>' misc2
+# CDSect, starting from '<![DATA[', returns to misc2
+cd0        ']' cd1; Char setdata cd0
+cd1        ']' cd2; Char setdata cd0
+cd2        '>' misc2
 
 
-# Doctype, starting from '<!D', returns to misc1
-# TODO: This is a hack, all we do is read until we find a '>', not even
-#   validating that this tag actually starts with <!DOCTYPE ..>, much less
+# Doctype, starting from '<!DOCTYPE', returns to misc1
+# TODO: This is a hack, all we do is read until we find a '>', not
 #   validating its content. This hack fails if the DTD contains a '>'
 #   character, which is very possible. Unfortunately, just figuring out where a
 #   DTD ends already requires a rather elaborate parser. :-(

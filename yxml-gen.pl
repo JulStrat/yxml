@@ -42,6 +42,7 @@ sub condtoc {
 
 
 sub acttoc {
+  my $next = shift;
   my(@c, @r);
   # XXX: Return values of function calls are or'ed together to create the
   # return value of yxml_parse(). This only works when the function do not
@@ -50,6 +51,13 @@ sub acttoc {
   for(@_) {
     push @r, "yxml_$1(x, ch)" if /^([a-z_]+)$/;
     push @c, "x->$1 = ch" if /^\$(.+)$/;
+    if(/^"/) {
+      push @c, (
+        "x->stringstate = YXMLS_$$next",
+        "x->string = (unsigned char *)$_"
+      );
+      $$next = 'string';
+    }
   }
   (
     map("$_;", @c),
@@ -67,7 +75,7 @@ sub gencode {
     die "Invalid state description for $state\n" if !@act;
     my $next = pop @act;
     $cond = condtoc $cond;
-    @act = acttoc @act;
+    @act = acttoc \$next, @act;
     my $needbrack = $next ne $state || @act > 1;
     push @code,
       "\tif($cond)".($needbrack ? ' {':''),
