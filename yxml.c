@@ -32,12 +32,20 @@ typedef enum {
 	YXMLS_attr4,
 	YXMLS_bom1,
 	YXMLS_bom2,
+	YXMLS_cd0,
+	YXMLS_cd1,
+	YXMLS_cd2,
+	YXMLS_cd3,
+	YXMLS_cd4,
+	YXMLS_cd5,
+	YXMLS_cd6,
+	YXMLS_cd7,
+	YXMLS_cd8,
 	YXMLS_comment0,
 	YXMLS_comment1,
 	YXMLS_comment2,
 	YXMLS_comment3,
 	YXMLS_comment4,
-	YXMLS_comment5,
 	YXMLS_dt0,
 	YXMLS_elem0,
 	YXMLS_elem1,
@@ -62,6 +70,7 @@ typedef enum {
 	YXMLS_le1,
 	YXMLS_le2,
 	YXMLS_lee1,
+	YXMLS_lee2,
 	YXMLS_leq0,
 	YXMLS_misc0,
 	YXMLS_misc1,
@@ -376,6 +385,66 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		break;
+	case YXMLS_cd0:
+		if(ch == (unsigned char)'C') {
+			x->state = YXMLS_cd1;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd1:
+		if(ch == (unsigned char)'D') {
+			x->state = YXMLS_cd2;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd2:
+		if(ch == (unsigned char)'A') {
+			x->state = YXMLS_cd3;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd3:
+		if(ch == (unsigned char)'T') {
+			x->state = YXMLS_cd4;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd4:
+		if(ch == (unsigned char)'A') {
+			x->state = YXMLS_cd5;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd5:
+		if(ch == (unsigned char)'[') {
+			x->state = YXMLS_cd6;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_cd6:
+		if(ch == (unsigned char)']') {
+			x->state = YXMLS_cd7;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch))
+			return yxml_setdata(x, ch);
+		break;
+	case YXMLS_cd7:
+		if(ch == (unsigned char)']') {
+			x->state = YXMLS_cd8;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_cd6;
+			return yxml_setdata(x, ch);
+		}
+		break;
+	case YXMLS_cd8:
+		if(ch == (unsigned char)'>') {
+			x->state = YXMLS_misc2;
+			return YXML_OK;
+		}
+		break;
 	case YXMLS_comment0:
 		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment1;
@@ -383,36 +452,30 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_comment1:
-		if(ch == (unsigned char)'-') {
+		if(yxml_isCommentStart(ch)) {
 			x->state = YXMLS_comment2;
 			return YXML_OK;
 		}
 		break;
 	case YXMLS_comment2:
-		if(yxml_isCommentStart(ch)) {
+		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment3;
 			return YXML_OK;
 		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
 		break;
 	case YXMLS_comment3:
 		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment4;
 			return YXML_OK;
 		}
-		if(yxml_isChar(ch))
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_comment2;
 			return YXML_OK;
+		}
 		break;
 	case YXMLS_comment4:
-		if(ch == (unsigned char)'-') {
-			x->state = YXMLS_comment5;
-			return YXML_OK;
-		}
-		if(yxml_isChar(ch)) {
-			x->state = YXMLS_comment3;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_comment5:
 		if(ch == (unsigned char)'>')
 			return yxml_retmisc(x, ch);
 		break;
@@ -619,7 +682,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_le2:
 		if(ch == (unsigned char)'!') {
-			x->state = YXMLS_comment0;
+			x->state = YXMLS_lee2;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'?') {
@@ -637,11 +700,21 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_lee1:
 		if(ch == (unsigned char)'-') {
-			x->state = YXMLS_comment1;
+			x->state = YXMLS_comment0;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'D') {
 			x->state = YXMLS_dt0;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_lee2:
+		if(ch == (unsigned char)'-') {
+			x->state = YXMLS_comment0;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'[') {
+			x->state = YXMLS_cd0;
 			return YXML_OK;
 		}
 		break;

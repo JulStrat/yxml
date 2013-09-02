@@ -60,10 +60,10 @@ misc2a     Ref ref misc2a; '\x3b' refend misc2
 
 le0        '!' lee1; '?' leq0; NameStart elemstart elem0
 le1        '!' lee1; '?' pi0; NameStart elemstart elem0
-# TODO: CDSect
-le2        '!' comment0; '?' pi0; '/' etag0; NameStart elemstart elem0
+le2        '!' lee2; '?' pi0; '/' etag0; NameStart elemstart elem0
 
-lee1       '-' comment1; 'D' dt0
+lee1       '-' comment0; 'D' dt0
+lee2       '-' comment0; '[' cd0
 leq0       'x' xmldecl0; NameStart pi1
 
 
@@ -127,13 +127,12 @@ std14      'o' std15;
 std15      $quote xmldecl8
 
 
-# Comment, after '<!', returns to misc1 or misc2
+# Comment, after '<!-', returns to misc1 or misc2
 comment0   '-' comment1
-comment1   '-' comment2
-comment2   CommentStart comment3
-comment3   '-' comment4; Char comment3
-comment4   '-' comment5; Char comment3
-comment5   '>' retmisc comment5
+comment1   CommentStart comment2
+comment2   '-' comment3; Char comment2
+comment3   '-' comment4; Char comment2
+comment4   '>' retmisc comment4
 
 
 # PI, starting from '<?', returns to misc1 or misc2
@@ -143,6 +142,18 @@ pi0        NameStart pi1
 pi1        Name pi1; SP pi2
 pi2        '?' pi3; Char pi2
 pi3        '>' retmisc pi3; Char pi2
+
+
+# CDSect, starting from '<![', returns to misc2
+cd0        'C' cd1
+cd1        'D' cd2
+cd2        'A' cd3
+cd3        'T' cd4
+cd4        'A' cd5
+cd5        '[' cd6
+cd6        ']' cd7; Char setdata cd6
+cd7        ']' cd8; Char setdata cd6
+cd8        '>' misc2
 
 
 # Doctype, starting from '<!D', returns to misc1
