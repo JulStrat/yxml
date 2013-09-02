@@ -1,0 +1,144 @@
+#  Copyright (c) 2013 Yoran Heling
+#
+#  Permission is hereby granted, free of charge, to any person obtaining
+#  a copy of this software and associated documentation files (the
+#  "Software"), to deal in the Software without restriction, including
+#  without limitation the rights to use, copy, modify, merge, publish,
+#  distribute, sublicense, and/or sell copies of the Software, and to
+#  permit persons to whom the Software is furnished to do so, subject to
+#  the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included
+#  in all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+#  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+#  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+#  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+#  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+# Format of this file (informal):
+#
+#  Line = State Desc (';' Desc)*
+#  Desc = Cond Act* Next
+#  Cond = FunctionName              # yxml_isFunctionName(char)
+#       | '$' Varname               # match character in Varname
+#       | C-char ('|' C-char)*
+#  Act  = FunctionName              # yxml_FunctionName(x, char)
+#       | '$' Varname               # Store current char into Varname
+#  Next = State
+#
+# Basically, it's just a short notation for manually writing a DFA. The script
+# that compiles this to C is pretty simple and stupid, which explains the
+# somewhat crude syntax of this file. It'd probably be more convenient to
+# modify ragel[1] to generate state machine code that can be used in the
+# yxml_parse() API, but I haven't really looked into that yet. I'm also not
+# sure how much control I'd lose over the size of the resulting state machine.
+#
+# 1. http://www.complang.org/ragel/
+
+# TODO: An XML declaration is not required in XML 1.0
+init        SP init; '\xef' bom1; '<' xmldecl0
+bom1        '\xbb' bom2
+bom2        '\xbf' bom3
+bom3        SP bom3; '<' xmldecl0
+
+# XMLDecl
+xmldecl0    '?' xmldecl1
+xmldecl1    'x' xmldecl2
+xmldecl2    'm' xmldecl3
+xmldecl3    'l' xmldecl4
+xmldecl4    SP xmldecl5
+xmldecl5    SP xmldecl5; 'v' ver0
+xmldecl6    SP xmldecl7; '?' xmldecl11
+xmldecl7    SP xmldecl7; '?' xmldecl11; 'e' enc0; 's' std0
+xmldecl8    SP xmldecl9; '?' xmldecl11
+xmldecl9    SP xmldecl9; '?' xmldecl11; 's' std0
+xmldecl10   SP xmldecl10; '?' xmldecl11
+xmldecl11   '>' misc0
+
+# VersionInfo, after 'v', returns to xmldecl6
+ver0       'e' ver1
+ver1       'r' ver2
+ver2       's' ver3
+ver3       'i' ver4
+ver4       'o' ver5
+ver5       'n' ver6
+ver6       SP ver6; '=' ver7
+ver7       SP ver7; '\''|'"' $quote ver8
+ver8       '1' ver9
+ver9       '.' ver10
+ver10      Num ver11;
+ver11      Num ver11; $quote xmldecl6
+
+# EncodingDecl, after 'e', returns to xmldecl8
+# TODO: Pass the encoding value to the application?
+enc0       'n' enc1
+enc1       'c' enc2
+enc2       'o' enc3
+enc3       'd' enc4
+enc4       'i' enc5
+enc5       'n' enc6
+enc6       'g' enc7
+enc7       SP enc7; '=' enc8
+enc8       SP enc8; '\''|'"' $quote enc9
+enc9       Alpha enc10
+enc10      EncName enc10; $quote xmldecl8
+
+# SDDecl, after 's', returns to xmldecl10
+# TODO: Pass the standalone flag to the application?
+std0       't' std1
+std1       'a' std2
+std2       'n' std3
+std3       'd' std4
+std4       'a' std5
+std5       'l' std6
+std6       'o' std7
+std7       'n' std8
+std8       'e' std9
+std9       SP std9; '=' std10
+std10      SP std10; '\''|'"' $quote std11
+std11      'y' std12; 'n' std14
+std12      'e' std13;
+std13      's' std15;
+std14      'o' std15;
+std15      $quote xmldecl10
+
+# TODO: Handle <!DOCTYPE and processing instructions
+misc0      SP misc0; '<' le
+le         '!' comment0; '/' etag0; NameStart elemstart elem0
+
+# Comment, after '<!', returns to misc0 (XXX: We shouldn't go to misc0 if we're inside an element)
+comment0   '-' comment1
+comment1   '-' comment2
+comment2   CommentStart comment3
+comment3   '-' comment4; Char comment3
+comment4   '-' comment5; Char comment3
+comment5   '>' misc0
+
+# End tag, after '</', returns to misc0  (XXX: This is incorrect, we should go to 'content', if this wasn't the top-level element)
+# XXX: It's not actually necessary to validate the characters, since the
+#   'elemclose' function already verifies (incrementally) that the name is
+#   equivalent to the corresponding <Open ..> tag. The only difference is that
+#   with the code below, </x/z> will result in ESYN, whereas a non-validating
+#   version would give ECLOSE.
+etag0      NameStart elemclose etag1
+etag1      Name elemclose etag1; SP elemcloseend etag2; '>' elemcloseend misc0
+etag2      SP etag2; '>' misc0
+
+# Element, after '<X', returns to misc0 (XXX: This is incorrect, we should go to 'content', unless this is a self-closing top-level element)
+elem0      Name elemname elem0; SP elemnameend elem1; '/' elemnameend attrsend elem3; '>' elemnameend attrsend misc0
+elem1      SP elem1; '/' attrsend elem3; '>' attrsend misc0; NameStart attrstart attr0
+elem2      SP elem1; '/' attrsend elem3; '>' attrsend misc0
+elem3      '>' selfclose misc0
+
+# Attribute, after NameStart, returns to elem2
+attr0      Name attrname attr0; SP attrnameend attr1; '=' attrnameend attr2
+attr1      SP attr1; '=' attr2
+attr2      SP attr2; '\''|'"' $quote attr3
+attr3      AttValue setdata attr3; '&' refstart attr4; $quote elem2
+attr4      Ref ref attr4; '\x3b' refend attr3
+

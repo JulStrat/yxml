@@ -1,0 +1,231 @@
+/* Copyright (c) 2013 Yoran Heling
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be included
+  in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+#include <yxml.h>
+#include <string.h>
+
+typedef enum {
+/*=STATES=*/
+} yxml_state_t;
+
+
+#define yxml_isChar(c) c
+#define yxml_isSP(c) (c == 0x20 || c == 0x09 || c == 0x0d || c == 0x0a)
+#define yxml_isAlpha(c) ((c|32)-'a' < 26)
+#define yxml_isNum(c) (c-'0' < 10)
+#define yxml_isHex(c) (yxml_isNum(c) || (c|32)-'a' < 6)
+#define yxml_isEncName(c) (yxml_isAlpha(c) || yxml_isNum(c) || c == '.' || c == '_' || c == '-')
+#define yxml_isCommentStart(c) (yxml_isChar(c) && c != '-')
+#define yxml_isNameStart(c) (yxml_isAlpha(c) || c == ':')
+#define yxml_isName(c) (yxml_isNameStart(c) || yxml_isNum(c) || c == '-' || c == '.')
+/* XXX: The valid characters are dependent on the quote char, hence the access to x->quote */
+#define yxml_isAttValue(c) (yxml_isChar(c) && c != x->quote && c != '<' && c != '&')
+/* Anything between '&' and ';', the yxml_ref* functions will do further
+ * validation. Strictly speaking, this is "yxml_isName(c) || c == '#'", but
+ * this parser doesn't understand entities with '.', ':', etc, anwyay.  */
+#define yxml_isRef(c) (yxml_isNum(c) || yxml_isAlpha(c) || c == '#')
+
+
+/* Set the x->data value to ch and tell the application we have some data.
+ * This can't be done with simple assignment because char may be unsigned, and
+ * unsigned-to-signed overflow is implementation defined in C. This function
+ * /looks/ inefficient, but gcc compiles it down to a single movb instruction
+ * on x86, even with -O0. */
+static inline int yxml_setdata(yxml_t *x, unsigned ch) {
+	unsigned char _ch = ch;
+	memcpy(&x->data, &_ch, 1);
+	return YXML_DATA;
+}
+
+
+static int yxml_elemstart(yxml_t *x, unsigned ch) {
+	if(x->stacklen+2 >= x->stacksize)
+		return YXML_ESTACK;
+	x->stacklen++;
+	x->elem = (char *)x->stack+x->stacklen;
+	x->stack[x->stacklen] = ch;
+	x->stacklen++;
+	x->stack[x->stacklen] = 0;
+	return YXML_OK;
+}
+
+
+static inline int yxml_elemname(yxml_t *x, unsigned ch) {
+	if(x->stacklen+1 >= x->stacksize)
+		return YXML_ESTACK;
+	x->stack[x->stacklen] = ch;
+	x->stacklen++;
+	x->stack[x->stacklen] = 0;
+	return YXML_OK;
+}
+
+
+static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
+	return YXML_OPEN;
+}
+
+
+/* Also used in yxml_elemcloseend(), since this function just removes the last
+ * element from the stack and returns CLOSE and EOD when appropriate. */
+static int yxml_selfclose(yxml_t *x, unsigned ch) {
+	do
+		x->stacklen--;
+	while(x->stack[x->stacklen]);
+
+	if(x->stacklen) {
+		x->elem = (char *)x->stack+x->stacklen-1;
+		while(*(x->elem-1))
+			x->elem--;
+		return YXML_CLOSE;
+	}
+	x->elem = (char *)x->stack;
+	return YXML_CLOSE | YXML_EOD;
+}
+
+
+static inline int yxml_elemclose(yxml_t *x, unsigned ch) {
+	if(*((unsigned char *)x->elem) != ch)
+		return YXML_ECLOSE;
+	x->elem++;
+	return YXML_OK;
+}
+
+
+static inline int yxml_elemcloseend(yxml_t *x, unsigned ch) {
+	if(*x->elem)
+		return YXML_ECLOSE;
+	return yxml_selfclose(x, ch);
+}
+
+
+static inline int yxml_attrstart(yxml_t *x, unsigned ch) {
+	x->attrlen = 1;
+	x->attr[0] = ch;
+	x->attr[1] = 0;
+	return YXML_OK;
+}
+
+
+static inline int yxml_attrname(yxml_t *x, unsigned ch) {
+	if(x->attrlen >= YXML_MAX_ATTRNAME)
+		return YXML_EATTR;
+	x->attr[x->attrlen] = ch;
+	x->attrlen++;
+	x->attr[x->attrlen] = 0;
+	return YXML_OK;
+}
+
+
+static inline int yxml_attrnameend(yxml_t *x, unsigned ch) {
+	return YXML_ATTR;
+}
+
+
+static inline int yxml_attrsend(yxml_t *x, unsigned ch) {
+	return YXML_EOA;
+}
+
+
+static inline int yxml_refstart(yxml_t *x, unsigned ch) {
+	memset(x->ref, 0, YXML_MAX_REF+1);
+	x->reflen = 0;
+	return YXML_OK;
+}
+
+
+static int yxml_ref(yxml_t *x, unsigned ch) {
+	if(x->reflen >= YXML_MAX_REF)
+		return YXML_EREF;
+	x->ref[x->reflen] = ch;
+	x->reflen++;
+	return YXML_OK;
+}
+
+
+static int yxml_refend(yxml_t *x, unsigned ch) {
+	unsigned char *r = x->ref;
+	ch = 0;
+	if(*r == '#') {
+		if(r[1] == 'x')
+			for(r += 2; yxml_isHex((unsigned)*r); r++)
+				ch = (ch<<4) + (*r <= '9' ? *r-'0' : (*r|32)-'a' + 10);
+		else
+			for(r++; yxml_isNum((unsigned)*r); r++)
+				ch = (ch*10) + (*r-'0');
+		if(*r)
+			ch = 0;
+	} else {
+		uint64_t ri;
+		memcpy(&ri, r, 8);
+		if(ri == *((uint64_t *)"lt\0\0\0\0\0"))
+			ch = '<';
+		else if(ri == *((uint64_t *)"gt\0\0\0\0\0"))
+			ch = '>';
+		else if(ri == *((uint64_t *)"amp\0\0\0\0"))
+			ch = '&';
+		else if(ri == *((uint64_t *)"apos\0\0\0"))
+			ch = '\'';
+		else if(ri == *((uint64_t *)"quot\0\0\0"))
+			ch = '"';
+	}
+
+	/* XXX: The API does not allow returning more than one byte at a time, so
+	 * CharRefs only work for ASCII at the moment. This is kind of stupid. */
+	if(!ch || ch > 127)
+		return YXML_EREF;
+	return yxml_setdata(x, ch);
+}
+
+
+void yxml_init(yxml_t *x, char *stack, size_t stacksize) {
+	memset(x, 0, sizeof(*x));
+	x->line = 1;
+	x->stack = (unsigned char *)stack;
+	x->stacksize = stacksize;
+	*x->stack = 0;
+	x->elem = (char *)x->stack;
+	x->state = YXMLS_init;
+}
+
+
+yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
+	/* Ensure that characters are in the range of 0..255 rather than -126..125.
+	 * All character comparisons are done with positive integers. */
+	unsigned ch = (unsigned)(_ch+256) & 0xff;
+
+	/* TODO: Validate UTF-8 correctness? */
+
+	if(ch == '\n') {
+		x->line++;
+		x->byte = 0;
+	}
+	x->byte++;
+	x->total++;
+
+	switch((yxml_state_t)x->state) {
+/*=SWITCH=*/
+	}
+	return YXML_ESYN;
+}
+
+
+/* vim: set noet sw=4 ts=4: */
