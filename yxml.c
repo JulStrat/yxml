@@ -93,7 +93,7 @@ typedef enum {
 #define yxml_isHex(c) (yxml_isNum(c) || (c|32)-'a' < 6)
 #define yxml_isEncName(c) (yxml_isAlpha(c) || yxml_isNum(c) || c == '.' || c == '_' || c == '-')
 #define yxml_isCommentStart(c) (yxml_isChar(c) && c != '-')
-#define yxml_isNameStart(c) (yxml_isAlpha(c) || c == ':')
+#define yxml_isNameStart(c) (yxml_isAlpha(c) || c == ':' || c == '_')
 #define yxml_isName(c) (yxml_isNameStart(c) || yxml_isNum(c) || c == '-' || c == '.')
 /* XXX: The valid characters are dependent on the quote char, hence the access to x->quote */
 #define yxml_isAttValue(c) (yxml_isChar(c) && c != x->quote && c != '<' && c != '&')
