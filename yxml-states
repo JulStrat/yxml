@@ -40,27 +40,46 @@
 #
 # 1. http://www.complang.org/ragel/
 
-# TODO: An XML declaration is not required in XML 1.0
-init        SP init; '\xef' bom1; '<' xmldecl0
+init        '\xef' bom1; SP misc0; '<' le0
 bom1        '\xbb' bom2
-bom2        '\xbf' bom3
-bom3        SP bom3; '<' xmldecl0
+bom2        '\xbf' misc0
 
-# XMLDecl
-xmldecl0    '?' xmldecl1
-xmldecl1    'x' xmldecl2
-xmldecl2    'm' xmldecl3
-xmldecl3    'l' xmldecl4
-xmldecl4    SP xmldecl5
-xmldecl5    SP xmldecl5; 'v' ver0
-xmldecl6    SP xmldecl7; '?' xmldecl11
-xmldecl7    SP xmldecl7; '?' xmldecl11; 'e' enc0; 's' std0
-xmldecl8    SP xmldecl9; '?' xmldecl11
-xmldecl9    SP xmldecl9; '?' xmldecl11; 's' std0
-xmldecl10   SP xmldecl10; '?' xmldecl11
-xmldecl11   '>' misc0
+# State numbers for the misc/le/lee/leq states:
+#   0 = before XMLDecl, (prolog)
+#   1 = before first element, (prolog/misc)
+#   2 = inside element (content)
+# And naming:
+#   misc = Nothing special seen yet
+#   le   = Seen '<'
+#   lee  = Seen '<!'
+#   leq  = Seen '<?'
+misc0      SP misc0; '<' le0
+misc1      SP misc1; '<' le1
+misc2      '<' le2; '&' refstart misc2a; Char setdata misc2
+misc2a     Ref ref misc2a; '\x3b' refend misc2
 
-# VersionInfo, after 'v', returns to xmldecl6
+le0        '!' lee1; '?' leq0; NameStart elemstart elem0
+le1        '!' lee1; '?' pi0; NameStart elemstart elem0
+# TODO: CDSect
+le2        '!' comment0; '?' pi0; '/' etag0; NameStart elemstart elem0
+
+lee1       '-' comment1; 'D' dt0
+leq0       'x' xmldecl0; NameStart pi1
+
+
+# XMLDecl, starting from '<?x', returns to misc1
+xmldecl0    'm' xmldecl1
+xmldecl1    'l' xmldecl2
+xmldecl2    SP xmldecl3
+xmldecl3    SP xmldecl3; 'v' ver0
+xmldecl4    SP xmldecl5; '?' xmldecl9
+xmldecl5    SP xmldecl5; '?' xmldecl9; 'e' enc0; 's' std0
+xmldecl6    SP xmldecl7; '?' xmldecl9
+xmldecl7    SP xmldecl7; '?' xmldecl9; 's' std0
+xmldecl8    SP xmldecl8; '?' xmldecl9
+xmldecl9    '>' misc1
+
+# VersionInfo, after 'v', returns to xmldecl4
 ver0       'e' ver1
 ver1       'r' ver2
 ver2       's' ver3
@@ -72,9 +91,9 @@ ver7       SP ver7; '\''|'"' $quote ver8
 ver8       '1' ver9
 ver9       '.' ver10
 ver10      Num ver11;
-ver11      Num ver11; $quote xmldecl6
+ver11      Num ver11; $quote xmldecl4
 
-# EncodingDecl, after 'e', returns to xmldecl8
+# EncodingDecl, after 'e', returns to xmldecl6
 # TODO: Pass the encoding value to the application?
 enc0       'n' enc1
 enc1       'c' enc2
@@ -86,9 +105,9 @@ enc6       'g' enc7
 enc7       SP enc7; '=' enc8
 enc8       SP enc8; '\''|'"' $quote enc9
 enc9       Alpha enc10
-enc10      EncName enc10; $quote xmldecl8
+enc10      EncName enc10; $quote xmldecl6
 
-# SDDecl, after 's', returns to xmldecl10
+# SDDecl, after 's', returns to xmldecl8
 # TODO: Pass the standalone flag to the application?
 std0       't' std1
 std1       'a' std2
@@ -105,35 +124,52 @@ std11      'y' std12; 'n' std14
 std12      'e' std13;
 std13      's' std15;
 std14      'o' std15;
-std15      $quote xmldecl10
+std15      $quote xmldecl8
 
-# TODO: Handle <!DOCTYPE and processing instructions
-misc0      SP misc0; '<' le
-le         '!' comment0; '/' etag0; NameStart elemstart elem0
 
-# Comment, after '<!', returns to misc0 (XXX: We shouldn't go to misc0 if we're inside an element)
+# Comment, after '<!', returns to misc1 or misc2
 comment0   '-' comment1
 comment1   '-' comment2
 comment2   CommentStart comment3
 comment3   '-' comment4; Char comment3
 comment4   '-' comment5; Char comment3
-comment5   '>' misc0
+comment5   '>' retmisc comment5
 
-# End tag, after '</', returns to misc0  (XXX: This is incorrect, we should go to 'content', if this wasn't the top-level element)
+
+# PI, starting from '<?', returns to misc1 or misc2
+# TODO: Verify that the PI name isn't /xml/i
+# TODO: Pass the name and contents to the application
+pi0        NameStart pi1
+pi1        Name pi1; SP pi2
+pi2        '?' pi3; Char pi2
+pi3        '>' retmisc pi3; Char pi2
+
+
+# Doctype, starting from '<!D', returns to misc1
+# TODO: This is a hack, all we do is read until we find a '>', not even
+#   validating that this tag actually starts with <!DOCTYPE ..>, much less
+#   validating its content. This hack fails if the DTD contains a '>'
+#   character, which is very possible. Unfortunately, just figuring out where a
+#   DTD ends already requires a rather elaborate parser. :-(
+dt0        '>' misc1; Char dt0
+
+
+# End tag, after '</', returns to misc2
 # XXX: It's not actually necessary to validate the characters, since the
 #   'elemclose' function already verifies (incrementally) that the name is
 #   equivalent to the corresponding <Open ..> tag. The only difference is that
 #   with the code below, </x/z> will result in ESYN, whereas a non-validating
 #   version would give ECLOSE.
 etag0      NameStart elemclose etag1
-etag1      Name elemclose etag1; SP elemcloseend etag2; '>' elemcloseend misc0
-etag2      SP etag2; '>' misc0
+etag1      Name elemclose etag1; SP elemcloseend etag2; '>' elemcloseend misc2
+etag2      SP etag2; '>' misc2
 
-# Element, after '<X', returns to misc0 (XXX: This is incorrect, we should go to 'content', unless this is a self-closing top-level element)
-elem0      Name elemname elem0; SP elemnameend elem1; '/' elemnameend attrsend elem3; '>' elemnameend attrsend misc0
-elem1      SP elem1; '/' attrsend elem3; '>' attrsend misc0; NameStart attrstart attr0
-elem2      SP elem1; '/' attrsend elem3; '>' attrsend misc0
-elem3      '>' selfclose misc0
+
+# Element, after '<X', returns to misc2
+elem0      Name elemname elem0; SP elemnameend elem1; '/' elemnameend attrsend elem3; '>' elemnameend attrsend misc2
+elem1      SP elem1; '/' attrsend elem3; '>' attrsend misc2; NameStart attrstart attr0
+elem2      SP elem1; '/' attrsend elem3; '>' attrsend misc2
+elem3      '>' selfclose misc2
 
 # Attribute, after NameStart, returns to elem2
 attr0      Name attrname attr0; SP attrnameend attr1; '=' attrnameend attr2

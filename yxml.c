@@ -32,13 +32,13 @@ typedef enum {
 	YXMLS_attr4,
 	YXMLS_bom1,
 	YXMLS_bom2,
-	YXMLS_bom3,
 	YXMLS_comment0,
 	YXMLS_comment1,
 	YXMLS_comment2,
 	YXMLS_comment3,
 	YXMLS_comment4,
 	YXMLS_comment5,
+	YXMLS_dt0,
 	YXMLS_elem0,
 	YXMLS_elem1,
 	YXMLS_elem2,
@@ -58,8 +58,19 @@ typedef enum {
 	YXMLS_etag1,
 	YXMLS_etag2,
 	YXMLS_init,
-	YXMLS_le,
+	YXMLS_le0,
+	YXMLS_le1,
+	YXMLS_le2,
+	YXMLS_lee1,
+	YXMLS_leq0,
 	YXMLS_misc0,
+	YXMLS_misc1,
+	YXMLS_misc2,
+	YXMLS_misc2a,
+	YXMLS_pi0,
+	YXMLS_pi1,
+	YXMLS_pi2,
+	YXMLS_pi3,
 	YXMLS_std0,
 	YXMLS_std1,
 	YXMLS_std10,
@@ -90,8 +101,6 @@ typedef enum {
 	YXMLS_ver9,
 	YXMLS_xmldecl0,
 	YXMLS_xmldecl1,
-	YXMLS_xmldecl10,
-	YXMLS_xmldecl11,
 	YXMLS_xmldecl2,
 	YXMLS_xmldecl3,
 	YXMLS_xmldecl4,
@@ -129,6 +138,15 @@ static inline int yxml_setdata(yxml_t *x, unsigned ch) {
 	unsigned char _ch = ch;
 	memcpy(&x->data, &_ch, 1);
 	return YXML_DATA;
+}
+
+
+/* Go to the misc1 or misc2 state, depending on whether a tag has been opened
+ * previously or not. (This is a hack to work around a limitation in the state
+ * machine description in yxml-states) */
+static inline int yxml_retmisc(yxml_t *x, unsigned ch) {
+	x->state = x->stacklen ? YXMLS_misc2 : YXMLS_misc1;
+	return YXML_OK;
 }
 
 
@@ -354,15 +372,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_bom2:
 		if(ch == (unsigned char)'\xbf') {
-			x->state = YXMLS_bom3;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_bom3:
-		if(yxml_isSP(ch))
-			return YXML_OK;
-		if(ch == (unsigned char)'<') {
-			x->state = YXMLS_xmldecl0;
+			x->state = YXMLS_misc0;
 			return YXML_OK;
 		}
 		break;
@@ -403,10 +413,16 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_comment5:
+		if(ch == (unsigned char)'>')
+			return yxml_retmisc(x, ch);
+		break;
+	case YXMLS_dt0:
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc1;
 			return YXML_OK;
 		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
 		break;
 	case YXMLS_elem0:
 		if(yxml_isName(ch))
@@ -420,7 +436,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_elemnameend(x, ch)|yxml_attrsend(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return yxml_elemnameend(x, ch)|yxml_attrsend(x, ch);
 		}
 		break;
@@ -432,7 +448,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_attrsend(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return yxml_attrsend(x, ch);
 		}
 		if(yxml_isNameStart(ch)) {
@@ -450,13 +466,13 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_attrsend(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return yxml_attrsend(x, ch);
 		}
 		break;
 	case YXMLS_elem3:
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return yxml_selfclose(x, ch);
 		}
 		break;
@@ -476,7 +492,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isEncName(ch))
 			return YXML_OK;
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl8;
+			x->state = YXMLS_xmldecl6;
 			return YXML_OK;
 		}
 		break;
@@ -547,7 +563,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_elemcloseend(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return yxml_elemcloseend(x, ch);
 		}
 		break;
@@ -555,25 +571,59 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
+			x->state = YXMLS_misc2;
 			return YXML_OK;
 		}
 		break;
 	case YXMLS_init:
-		if(yxml_isSP(ch))
-			return YXML_OK;
 		if(ch == (unsigned char)'\xef') {
 			x->state = YXMLS_bom1;
 			return YXML_OK;
 		}
+		if(yxml_isSP(ch)) {
+			x->state = YXMLS_misc0;
+			return YXML_OK;
+		}
 		if(ch == (unsigned char)'<') {
-			x->state = YXMLS_xmldecl0;
+			x->state = YXMLS_le0;
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_le:
+	case YXMLS_le0:
+		if(ch == (unsigned char)'!') {
+			x->state = YXMLS_lee1;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_leq0;
+			return YXML_OK;
+		}
+		if(yxml_isNameStart(ch)) {
+			x->state = YXMLS_elem0;
+			return yxml_elemstart(x, ch);
+		}
+		break;
+	case YXMLS_le1:
+		if(ch == (unsigned char)'!') {
+			x->state = YXMLS_lee1;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi0;
+			return YXML_OK;
+		}
+		if(yxml_isNameStart(ch)) {
+			x->state = YXMLS_elem0;
+			return yxml_elemstart(x, ch);
+		}
+		break;
+	case YXMLS_le2:
 		if(ch == (unsigned char)'!') {
 			x->state = YXMLS_comment0;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi0;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'/') {
@@ -585,11 +635,89 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_elemstart(x, ch);
 		}
 		break;
+	case YXMLS_lee1:
+		if(ch == (unsigned char)'-') {
+			x->state = YXMLS_comment1;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'D') {
+			x->state = YXMLS_dt0;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_leq0:
+		if(ch == (unsigned char)'x') {
+			x->state = YXMLS_xmldecl0;
+			return YXML_OK;
+		}
+		if(yxml_isNameStart(ch)) {
+			x->state = YXMLS_pi1;
+			return YXML_OK;
+		}
+		break;
 	case YXMLS_misc0:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'<') {
-			x->state = YXMLS_le;
+			x->state = YXMLS_le0;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_misc1:
+		if(yxml_isSP(ch))
+			return YXML_OK;
+		if(ch == (unsigned char)'<') {
+			x->state = YXMLS_le1;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_misc2:
+		if(ch == (unsigned char)'<') {
+			x->state = YXMLS_le2;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'&') {
+			x->state = YXMLS_misc2a;
+			return yxml_refstart(x, ch);
+		}
+		if(yxml_isChar(ch))
+			return yxml_setdata(x, ch);
+		break;
+	case YXMLS_misc2a:
+		if(yxml_isRef(ch))
+			return yxml_ref(x, ch);
+		if(ch == (unsigned char)'\x3b') {
+			x->state = YXMLS_misc2;
+			return yxml_refend(x, ch);
+		}
+		break;
+	case YXMLS_pi0:
+		if(yxml_isNameStart(ch)) {
+			x->state = YXMLS_pi1;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_pi1:
+		if(yxml_isName(ch))
+			return YXML_OK;
+		if(yxml_isSP(ch)) {
+			x->state = YXMLS_pi2;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_pi2:
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi3;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
+		break;
+	case YXMLS_pi3:
+		if(ch == (unsigned char)'>')
+			return yxml_retmisc(x, ch);
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_pi2;
 			return YXML_OK;
 		}
 		break;
@@ -644,7 +772,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_std15:
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl10;
+			x->state = YXMLS_xmldecl8;
 			return YXML_OK;
 		}
 		break;
@@ -720,7 +848,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isNum(ch))
 			return YXML_OK;
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl6;
+			x->state = YXMLS_xmldecl4;
 			return YXML_OK;
 		}
 		break;
@@ -778,40 +906,28 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_xmldecl0:
-		if(ch == (unsigned char)'?') {
+		if(ch == (unsigned char)'m') {
 			x->state = YXMLS_xmldecl1;
 			return YXML_OK;
 		}
 		break;
 	case YXMLS_xmldecl1:
-		if(ch == (unsigned char)'x') {
+		if(ch == (unsigned char)'l') {
 			x->state = YXMLS_xmldecl2;
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl10:
-		if(yxml_isSP(ch))
-			return YXML_OK;
-		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl11;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_xmldecl11:
-		if(ch == (unsigned char)'>') {
-			x->state = YXMLS_misc0;
-			return YXML_OK;
-		}
-		break;
 	case YXMLS_xmldecl2:
-		if(ch == (unsigned char)'m') {
+		if(yxml_isSP(ch)) {
 			x->state = YXMLS_xmldecl3;
 			return YXML_OK;
 		}
 		break;
 	case YXMLS_xmldecl3:
-		if(ch == (unsigned char)'l') {
-			x->state = YXMLS_xmldecl4;
+		if(yxml_isSP(ch))
+			return YXML_OK;
+		if(ch == (unsigned char)'v') {
+			x->state = YXMLS_ver0;
 			return YXML_OK;
 		}
 		break;
@@ -820,30 +936,16 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			x->state = YXMLS_xmldecl5;
 			return YXML_OK;
 		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_xmldecl9;
+			return YXML_OK;
+		}
 		break;
 	case YXMLS_xmldecl5:
 		if(yxml_isSP(ch))
 			return YXML_OK;
-		if(ch == (unsigned char)'v') {
-			x->state = YXMLS_ver0;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_xmldecl6:
-		if(yxml_isSP(ch)) {
-			x->state = YXMLS_xmldecl7;
-			return YXML_OK;
-		}
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl11;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_xmldecl7:
-		if(yxml_isSP(ch))
-			return YXML_OK;
-		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl11;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'e') {
@@ -855,25 +957,39 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl8:
+	case YXMLS_xmldecl6:
 		if(yxml_isSP(ch)) {
+			x->state = YXMLS_xmldecl7;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'?') {
 			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
-		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl11;
-			return YXML_OK;
-		}
 		break;
-	case YXMLS_xmldecl9:
+	case YXMLS_xmldecl7:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl11;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'s') {
 			x->state = YXMLS_std0;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_xmldecl8:
+		if(yxml_isSP(ch))
+			return YXML_OK;
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_xmldecl9;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_xmldecl9:
+		if(ch == (unsigned char)'>') {
+			x->state = YXMLS_misc1;
 			return YXML_OK;
 		}
 		break;
