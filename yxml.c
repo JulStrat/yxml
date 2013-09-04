@@ -87,7 +87,8 @@ typedef enum {
 
 
 #define yxml_isChar(c) 1
-#define yxml_isSP(c) (c == 0x20 || c == 0x09 || c == 0x0d || c == 0x0a)
+/* 0xd should be part of SP, too, but yxml_parse() already normalizes that into 0xa */
+#define yxml_isSP(c) (c == 0x20 || c == 0x09 || c == 0x0a)
 #define yxml_isAlpha(c) ((c|32)-'a' < 26)
 #define yxml_isNum(c) (c-'0' < 10)
 #define yxml_isHex(c) (yxml_isNum(c) || (c|32)-'a' < 6)
@@ -280,15 +281,23 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	unsigned ch = (unsigned)(_ch+256) & 0xff;
 	if(!ch)
 		return YXML_ESYN;
+	x->total++;
 
-	/* TODO: Validate UTF-8 correctness? */
-
-	if(ch == '\n') {
+	/* End-of-Line normalization, "\rX", "\r\n" and "\n" are recognized and
+	 * normalized to a single '\n' as per XML 1.0 section 2.11. XML 1.1 adds
+	 * some non-ASCII character sequences to this list, but we can only handle
+	 * ASCII here without making assumptions about the input encoding. */
+	if(x->ignore == ch) {
+		x->ignore = 0;
+		return YXML_OK;
+	}
+	x->ignore = (ch == 0xd) * 0xa;
+	if(ch == 0xa || ch == 0xd) {
+		ch = 0xa;
 		x->line++;
 		x->byte = 0;
 	}
 	x->byte++;
-	x->total++;
 
 	switch((yxml_state_t)x->state) {
 	case YXMLS_string:
