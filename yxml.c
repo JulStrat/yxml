@@ -116,6 +116,12 @@ static inline int yxml_setdata(yxml_t *x, unsigned ch) {
 }
 
 
+static inline int yxml_setattrval(yxml_t *x, unsigned ch) {
+	/* Normalize attribute values according to the XML spec section 3.3.3. */
+	return yxml_setdata(x, ch == 0x9 || ch == 0xa ? 0x20 : ch);
+}
+
+
 /* Go to the misc1 or misc2 state, depending on whether a tag has been opened
  * previously or not. (This is a hack to work around a limitation in the state
  * machine description in yxml-states) */
@@ -339,7 +345,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_attr3:
 		if(yxml_isAttValue(ch))
-			return yxml_setdata(x, ch);
+			return yxml_setattrval(x, ch);
 		if(ch == (unsigned char)'&') {
 			x->state = YXMLS_attr4;
 			return yxml_refstart(x, ch);
