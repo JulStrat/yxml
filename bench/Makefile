@@ -59,7 +59,6 @@ ${MXML}:
 
 
 yxml.o: ../yxml.c
-	make -C .. yxml.c
 	${CC} ${CFLAGS} -I.. ../yxml.c -c
 
 yxml: ${MUSLCROSS} bench.c yxml.o
