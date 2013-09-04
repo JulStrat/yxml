@@ -86,7 +86,7 @@ typedef enum {
 } yxml_state_t;
 
 
-#define yxml_isChar(c) c
+#define yxml_isChar(c) 1
 #define yxml_isSP(c) (c == 0x20 || c == 0x09 || c == 0x0d || c == 0x0a)
 #define yxml_isAlpha(c) ((c|32)-'a' < 26)
 #define yxml_isNum(c) (c-'0' < 10)
@@ -278,6 +278,8 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	/* Ensure that characters are in the range of 0..255 rather than -126..125.
 	 * All character comparisons are done with positive integers. */
 	unsigned ch = (unsigned)(_ch+256) & 0xff;
+	if(!ch)
+		return YXML_ESYN;
 
 	/* TODO: Validate UTF-8 correctness? */
 
