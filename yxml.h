@@ -23,14 +23,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define YXML_MAX_ATTRNAME 126
 #define YXML_MAX_REF 7 /* Must be >=7 in order for the hack in yxml_refend() to work */
 
 
 typedef enum {
 	YXML_EREF    = -5, /* Invalid character or entity reference (&whatever;) */
 	YXML_ECLOSE  = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
-	YXML_ESTACK  = -3, /* Stack overflow (too deeply nested tags or too long element name) */
+	YXML_ESTACK  = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
 	YXML_EATTR   = -2, /* Too long attribute name                    */
 	YXML_ESYN    = -1, /* Syntax error (unexpected byte)             */
 	YXML_OK      =  0, /* Character consumed, no new token present   */
@@ -76,7 +75,7 @@ typedef struct {
 
 	/* Currently opened attribute name, zero-length if not in an attribute.
 	 * Changed after YXML_ATTR. */
-	char attr[YXML_MAX_ATTRNAME+1];
+	char *attr;
 
 	/* Line number, byte offset within that line, and total bytes read. These
 	 * values refer to the position _after_ the last byte given to
@@ -88,7 +87,7 @@ typedef struct {
 
 	/* PRIVATE */
 	int state;
-	unsigned char *stack; /* Stack of element names, separated by \0. Also starts with a \0. */
+	unsigned char *stack; /* Stack of element names + attribute name, separated by \0. Also starts with a \0. */
 	size_t stacksize, stacklen;
 	size_t attrlen;
 	unsigned quote;

@@ -131,11 +131,11 @@ static inline int yxml_retmisc(yxml_t *x, unsigned ch) {
 }
 
 
-static int yxml_elemstart(yxml_t *x, unsigned ch) {
+static int yxml_pushstack(yxml_t *x, char **res, unsigned ch) {
 	if(x->stacklen+2 >= x->stacksize)
 		return YXML_ESTACK;
 	x->stacklen++;
-	x->elem = (char *)x->stack+x->stacklen;
+	*res = (char *)x->stack+x->stacklen;
 	x->stack[x->stacklen] = ch;
 	x->stacklen++;
 	x->stack[x->stacklen] = 0;
@@ -143,13 +143,30 @@ static int yxml_elemstart(yxml_t *x, unsigned ch) {
 }
 
 
-static inline int yxml_elemname(yxml_t *x, unsigned ch) {
+static int yxml_pushstackc(yxml_t *x, unsigned ch) {
 	if(x->stacklen+1 >= x->stacksize)
 		return YXML_ESTACK;
 	x->stack[x->stacklen] = ch;
 	x->stacklen++;
 	x->stack[x->stacklen] = 0;
 	return YXML_OK;
+}
+
+
+static void yxml_popstack(yxml_t *x) {
+	do
+		x->stacklen--;
+	while(x->stack[x->stacklen]);
+}
+
+
+static inline int yxml_elemstart(yxml_t *x, unsigned ch) {
+	return yxml_pushstack(x, &x->elem, ch);
+}
+
+
+static inline int yxml_elemname(yxml_t *x, unsigned ch) {
+	return yxml_pushstackc(x, ch);
 }
 
 
@@ -161,10 +178,7 @@ static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
 /* Also used in yxml_elemcloseend(), since this function just removes the last
  * element from the stack and returns CLOSE and EOD when appropriate. */
 static int yxml_selfclose(yxml_t *x, unsigned ch) {
-	do
-		x->stacklen--;
-	while(x->stack[x->stacklen]);
-
+	yxml_popstack(x);
 	if(x->stacklen) {
 		x->elem = (char *)x->stack+x->stacklen-1;
 		while(*(x->elem-1))
@@ -192,25 +206,23 @@ static inline int yxml_elemcloseend(yxml_t *x, unsigned ch) {
 
 
 static inline int yxml_attrstart(yxml_t *x, unsigned ch) {
-	x->attrlen = 1;
-	x->attr[0] = ch;
-	x->attr[1] = 0;
-	return YXML_OK;
+	return yxml_pushstack(x, &x->attr, ch);
 }
 
 
 static inline int yxml_attrname(yxml_t *x, unsigned ch) {
-	if(x->attrlen >= YXML_MAX_ATTRNAME)
-		return YXML_EATTR;
-	x->attr[x->attrlen] = ch;
-	x->attrlen++;
-	x->attr[x->attrlen] = 0;
-	return YXML_OK;
+	return yxml_pushstackc(x, ch);
 }
 
 
 static inline int yxml_attrnameend(yxml_t *x, unsigned ch) {
 	return YXML_ATTR;
+}
+
+
+static inline int yxml_attrvalend(yxml_t *x, unsigned ch) {
+	yxml_popstack(x);
+	return YXML_OK;
 }
 
 
@@ -352,7 +364,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(x->quote == ch) {
 			x->state = YXMLS_elem2;
-			return YXML_OK;
+			return yxml_attrvalend(x, ch);
 		}
 		break;
 	case YXMLS_attr4:

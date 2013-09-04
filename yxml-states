@@ -149,6 +149,6 @@ elem3      '>' selfclose misc2
 attr0      Name attrname attr0; SP attrnameend attr1; '=' attrnameend attr2
 attr1      SP attr1; '=' attr2
 attr2      SP attr2; '\''|'"' $quote attr3
-attr3      AttValue setattrval attr3; '&' refstart attr4; $quote elem2
+attr3      AttValue setattrval attr3; '&' refstart attr4; $quote attrvalend elem2
 attr4      Ref ref attr4; '\x3b' refend attr3
 
