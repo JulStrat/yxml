@@ -232,14 +232,14 @@ static inline int yxml_attrsend(yxml_t *x, unsigned ch) {
 
 
 static inline int yxml_refstart(yxml_t *x, unsigned ch) {
-	memset(x->ref, 0, YXML_MAX_REF+1);
+	memset(x->ref, 0, sizeof(x->ref));
 	x->reflen = 0;
 	return YXML_OK;
 }
 
 
 static int yxml_ref(yxml_t *x, unsigned ch) {
-	if(x->reflen >= YXML_MAX_REF)
+	if(x->reflen >= sizeof(x->ref)-1)
 		return YXML_EREF;
 	x->ref[x->reflen] = ch;
 	x->reflen++;

@@ -23,8 +23,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define YXML_MAX_REF 7 /* Must be >=7 in order for the hack in yxml_refend() to work */
-
 
 typedef enum {
 	YXML_EREF    = -5, /* Invalid character or entity reference (&whatever;) */
@@ -89,12 +87,11 @@ typedef struct {
 	int state;
 	unsigned char *stack; /* Stack of element names + attribute name, separated by \0. Also starts with a \0. */
 	size_t stacksize, stacklen;
-	size_t attrlen;
+	unsigned char ref[8];
+	unsigned reflen;
 	unsigned quote;
-	int reflen;
 	int stringstate;
 	unsigned ignore;
-	unsigned char ref[YXML_MAX_REF+1];
 	unsigned char *string;
 } yxml_t;
 
