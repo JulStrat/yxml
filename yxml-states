@@ -140,9 +140,9 @@ etag2      SP etag2; '>' misc2
 
 
 # Element, after '<X', returns to misc2
-elem0      Name elemname elem0; SP elemnameend elem1; '/' elemnameend attrsend elem3; '>' elemnameend attrsend misc2
-elem1      SP elem1; '/' attrsend elem3; '>' attrsend misc2; NameStart attrstart attr0
-elem2      SP elem1; '/' attrsend elem3; '>' attrsend misc2
+elem0      Name elemname elem0; SP elemnameend elem1; '/' elemnameend content elem3; '>' elemnameend content misc2
+elem1      SP elem1; '/' content elem3; '>' content misc2; NameStart attrstart attr0
+elem2      SP elem1; '/' content elem3; '>' content misc2
 elem3      '>' selfclose misc2
 
 # Attribute, after NameStart, returns to elem2

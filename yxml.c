@@ -171,22 +171,22 @@ static inline int yxml_elemname(yxml_t *x, unsigned ch) {
 
 
 static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
-	return YXML_OPEN;
+	return YXML_ELEMEND;
 }
 
 
 /* Also used in yxml_elemcloseend(), since this function just removes the last
- * element from the stack and returns CLOSE and EOD when appropriate. */
+ * element from the stack and returns ELEMEND and EOD when appropriate. */
 static int yxml_selfclose(yxml_t *x, unsigned ch) {
 	yxml_popstack(x);
 	if(x->stacklen) {
 		x->elem = (char *)x->stack+x->stacklen-1;
 		while(*(x->elem-1))
 			x->elem--;
-		return YXML_CLOSE;
+		return YXML_ELEMEND;
 	}
 	x->elem = (char *)x->stack;
-	return YXML_CLOSE | YXML_EOD;
+	return YXML_ELEMEND | YXML_EOD;
 }
 
 
@@ -216,18 +216,18 @@ static inline int yxml_attrname(yxml_t *x, unsigned ch) {
 
 
 static inline int yxml_attrnameend(yxml_t *x, unsigned ch) {
-	return YXML_ATTR;
+	return YXML_ATTRSTART;
 }
 
 
 static inline int yxml_attrvalend(yxml_t *x, unsigned ch) {
 	yxml_popstack(x);
-	return YXML_OK;
+	return YXML_ATTREND;
 }
 
 
-static inline int yxml_attrsend(yxml_t *x, unsigned ch) {
-	return YXML_EOA;
+static inline int yxml_content(yxml_t *x, unsigned ch) {
+	return YXML_CONTENT;
 }
 
 
@@ -450,11 +450,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_elemnameend(x, ch)|yxml_attrsend(x, ch);
+			return yxml_elemnameend(x, ch)|yxml_content(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_elemnameend(x, ch)|yxml_attrsend(x, ch);
+			return yxml_elemnameend(x, ch)|yxml_content(x, ch);
 		}
 		break;
 	case YXMLS_elem1:
@@ -462,11 +462,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_attrsend(x, ch);
+			return yxml_content(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_attrsend(x, ch);
+			return yxml_content(x, ch);
 		}
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_attr0;
@@ -480,11 +480,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_attrsend(x, ch);
+			return yxml_content(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_attrsend(x, ch);
+			return yxml_content(x, ch);
 		}
 		break;
 	case YXMLS_elem3:

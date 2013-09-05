@@ -25,38 +25,39 @@
 
 
 typedef enum {
-	YXML_EREF    = -5, /* Invalid character or entity reference (&whatever;) */
-	YXML_ECLOSE  = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
-	YXML_ESTACK  = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
-	YXML_EATTR   = -2, /* Too long attribute name                    */
-	YXML_ESYN    = -1, /* Syntax error (unexpected byte)             */
-	YXML_OK      =  0, /* Character consumed, no new token present   */
-	YXML_OPEN    =  1, /* Start of an element:   '<Tag ..'           */
-	YXML_CLOSE   =  2, /* End of an element:     '.. />' or '</Tag>' */
-	YXML_ATTR    =  4, /* Attribute:             'Name=..'           */
-	YXML_DATA    =  8, /* Attribute value or element contents        */
-	YXML_EOA     = 16, /* End of attributes:     '.. />' or '.. >'   */
-	YXML_EOD     = 32  /* End of XML document                        */
+	YXML_EREF        = -5, /* Invalid character or entity reference (&whatever;) */
+	YXML_ECLOSE      = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
+	YXML_ESTACK      = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
+	YXML_EATTR       = -2, /* Too long attribute name                    */
+	YXML_ESYN        = -1, /* Syntax error (unexpected byte)             */
+	YXML_OK          =  0, /* Character consumed, no new token present   */
+	YXML_ELEMSTART   =  1, /* Start of an element:   '<Tag ..'           */
+	YXML_ELEMEND     =  2, /* End of an element:     '.. />' or '</Tag>' */
+	YXML_ATTRSTART   =  4, /* Attribute:             'Name=..'          */
+	YXML_ATTREND     =  8, /* End of attribute       '.."'                */
+	YXML_CONTENT     = 16, /* Start of element content '.. />' or '.. >' */
+	YXML_DATA        = 32, /* Attribute value or element contents        */
+	YXML_EOD         = 64  /* End of XML document                        */
 } yxml_ret_t;
 
 /* When, exactly, are tokens returned?
  *
  * <TagName
- *   '>' OPEN | EOA
- *   '/' OPEN | EOA, '>' CLOSE (| EOD)
- *   ' ' OPEN
- *     '>' EOA
- *     '/' EOA, '>' CLOSE (| EOD)
+ *   '>' ELEMSTART | CONTENT
+ *   '/' ELEMSTART | CONTENT, '>' ELEMENT (| EOD)
+ *   ' ' ELEMSTART
+ *     '>' CONTENT
+ *     '/' CONTENT, '>' ELEMEND (| EOD)
  *     Attr
- *       '=' ATTR
+ *       '=' ATTRSTART
  *         "X DATA
  *           'Y'  DATA
  *             'Z'  DATA
- *               "> EOA
- *               "/ EOA, '>' CLOSE (| EOD)
+ *               "> ATTREND
+ *               "/ CONTENT, '>' ELEMEND (| EOD)
  *
  * </TagName
- *   '>' CLOSE (| EOD)
+ *   '>' ELEMEND (| EOD)
  */
 
 
@@ -64,15 +65,17 @@ typedef struct {
 	/* PUBLIC (read-only) */
 
 	/* Name of the current element, zero-length if not in any element. Changed
-	 * after YXML_OPEN or YXML_CLOSE. */
+	 * after YXML_ELEMSTART. The pointer will remain valid up to and including
+	 * the next YXML_CONTENT, the pointed-to buffer will remain valid up to and
+	 * including the YXML_ELEMCLOSE for the corresponding element. */
 	char *elem;
 
 	/* The last read character of an attribute value or element data. Changed
-	 * after YXML_DATA. */
+	 * after YXML_DATA and only valid until the next yxml_parse() call. */
 	char data;
 
-	/* Currently opened attribute name, zero-length if not in an attribute.
-	 * Changed after YXML_ATTR. */
+	/* Name of the current attribute. Changed after YXML_ATTRSTART, valid up to
+	 * and including the next YXML_ATTREND. */
 	char *attr;
 
 	/* Line number, byte offset within that line, and total bytes read. These
