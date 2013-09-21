@@ -161,7 +161,7 @@ static void yxml_popstack(yxml_t *x) {
 
 
 static inline int yxml_elemstart(yxml_t *x, unsigned ch) {
-	return yxml_pushstack(x, &x->elem, ch);
+	return x->afterelem ? YXML_EMULROOT : yxml_pushstack(x, &x->elem, ch);
 }
 
 
@@ -176,7 +176,7 @@ static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
 
 
 /* Also used in yxml_elemcloseend(), since this function just removes the last
- * element from the stack and returns ELEMEND and EOD when appropriate. */
+ * element from the stack and returns ELEMEND. */
 static int yxml_selfclose(yxml_t *x, unsigned ch) {
 	yxml_popstack(x);
 	if(x->stacklen) {
@@ -186,7 +186,8 @@ static int yxml_selfclose(yxml_t *x, unsigned ch) {
 		return YXML_ELEMEND;
 	}
 	x->elem = (char *)x->stack;
-	return YXML_ELEMEND | YXML_EOD;
+	x->afterelem = 1;
+	return YXML_ELEMEND;
 }
 
 

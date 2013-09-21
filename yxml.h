@@ -25,6 +25,7 @@
 
 
 typedef enum {
+	YXML_EMULROOT    = -6, /* Document contains more than a single root element */
 	YXML_EREF        = -5, /* Invalid character or entity reference (&whatever;) */
 	YXML_ECLOSE      = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
 	YXML_ESTACK      = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
@@ -36,28 +37,27 @@ typedef enum {
 	YXML_ATTRSTART   =  4, /* Attribute:             'Name=..'          */
 	YXML_ATTREND     =  8, /* End of attribute       '.."'                */
 	YXML_CONTENT     = 16, /* Start of element content '.. />' or '.. >' */
-	YXML_DATA        = 32, /* Attribute value or element contents        */
-	YXML_EOD         = 64  /* End of XML document                        */
+	YXML_DATA        = 32  /* Attribute value or element contents        */
 } yxml_ret_t;
 
 /* When, exactly, are tokens returned?
  *
  * <TagName
  *   '>' ELEMSTART | CONTENT
- *   '/' ELEMSTART | CONTENT, '>' ELEMENT (| EOD)
+ *   '/' ELEMSTART | CONTENT, '>' ELEMEND
  *   ' ' ELEMSTART
  *     '>' CONTENT
- *     '/' CONTENT, '>' ELEMEND (| EOD)
+ *     '/' CONTENT, '>' ELEMEND
  *     Attr
  *       '=' ATTRSTART
  *         "X DATA
  *           'Y'  DATA
  *             'Z'  DATA
  *               "> ATTREND
- *               "/ CONTENT, '>' ELEMEND (| EOD)
+ *               "/ CONTENT, '>' ELEMEND
  *
  * </TagName
- *   '>' ELEMEND (| EOD)
+ *   '>' ELEMEND
  */
 
 
@@ -96,6 +96,7 @@ typedef struct {
 	int stringstate;
 	unsigned ignore;
 	unsigned char *string;
+	char afterelem;
 } yxml_t;
 
 

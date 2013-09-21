@@ -48,7 +48,7 @@ static void xmlbench(const char *buf, size_t bufsize) {
 	do {
 		r = yxml_parse(x, *buf);
 		buf++;
-	} while(*buf && r >= 0 && r != YXML_EOD);
+	} while(*buf && r >= 0);
 	/*printf("t%03lu l%03u b%03lu: %c %d", x->total, x->line, x->byte, *buf, r);*/
 	assert(!*buf);
 }
