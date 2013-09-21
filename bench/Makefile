@@ -10,7 +10,7 @@ FILE2=discogs_20130801_labels.xml
 FILE2URL=http://www.discogs.com/data/${FILE2}.gz
 FILES=${FILE1} ${FILE2}
 MUSLCROSS=x86_64-linux-musl
-MUSLCROSSURL=https://bitbucket.org/GregorR/musl-cross/downloads/crossx86-x86_64-linux-musl-0.9.11.tar.xz
+MUSLCROSSURL=https://googledrive.com/host/0BwnS5DMB0YQ6bURENWxvR0toTFU/crossx86-x86_64-linux-musl-0.9.13.tar.xz
 EXPAT=expat-2.1.0
 EXPATURL=http://downloads.sourceforge.net/project/expat/expat/2.1.0/${EXPAT}.tar.gz
 LIBXML2=libxml2-2.9.1
@@ -127,5 +127,5 @@ mxml-bench: mxml ${FILES}
 clean:
 	rm -f *.a *.o *-bench yxml strlen expat libxml2 mxml
 
-distclean:
+distclean: clean
 	rm -rf ${MUSLCROSS} ${FILES} ${EXPAT} ${LIBXML2} ${MXML}
