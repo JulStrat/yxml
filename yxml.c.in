@@ -95,7 +95,7 @@ static void yxml_popstack(yxml_t *x) {
 
 
 static inline int yxml_elemstart(yxml_t *x, unsigned ch) {
-	return x->afterelem ? YXML_EMULROOT : yxml_pushstack(x, &x->elem, ch);
+	return yxml_pushstack(x, &x->elem, ch);
 }
 
 
@@ -120,7 +120,7 @@ static int yxml_selfclose(yxml_t *x, unsigned ch) {
 		return YXML_ELEMEND;
 	}
 	x->elem = (char *)x->stack;
-	x->afterelem = 1;
+	x->state = YXMLS_misc3;
 	return YXML_ELEMEND;
 }
 
@@ -268,7 +268,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 
 
 yxml_ret_t yxml_eof(yxml_t *x) {
-	if(!x->afterelem || x->state != YXMLS_misc2)
+	if(x->state != YXMLS_misc3)
 		return YXML_EEOF;
 	return YXML_OK;
 }

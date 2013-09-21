@@ -54,22 +54,27 @@ init        '\xef' "\xbb\xbf" misc0; SP misc0; '<' le0
 #   0 = before XMLDecl, (prolog)
 #   1 = before first element, (prolog/misc)
 #   2 = inside element (content)
+#   3 = after root element (misc)
 # And naming:
 #   misc = Nothing special seen yet
 #   le   = Seen '<'
 #   lee  = Seen '<!'
 #   leq  = Seen '<?'
+# The 'misc3' state is entered automatically when the root element has been
+# closed, yxml_selfclose() does this.
 misc0      SP misc0; '<' le0
 misc1      SP misc1; '<' le1
 misc2      '<' le2; '&' refstart misc2a; Char setdata misc2
 misc2a     Ref ref misc2a; '\x3b' refend misc2
+misc3      SP misc3; '<' le3
 
 le0        '!' lee1; '?' leq0; NameStart elemstart elem0
 le1        '!' lee1; '?' @misc1 pi0; NameStart elemstart elem0
 le2        '!' lee2; '?' @misc2 pi0; '/' etag0; NameStart elemstart elem0
+le3        '!' @misc3 comment0; '?' @misc3 pi0
 
-lee1       '-' @misc1 comment0; 'D' "OCTYPE" dt0
-lee2       '-' @misc2 comment0; '[' "CDATA[" cd0
+lee1       '-' @misc1 comment1; 'D' "OCTYPE" dt0
+lee2       '-' @misc2 comment1; '[' "CDATA[" cd0
 leq0       'x' "ml" xmldecl0; NameStart pi1
 
 
@@ -104,12 +109,13 @@ std2       'y' "es" std3; 'n' "o" std3
 std3       $quote xmldecl6
 
 
-# Comment, after '<!-', returns to @
+# Comment, after '<!', returns to @
 comment0   '-' comment1
-comment1   CommentStart comment2
-comment2   '-' comment3; Char comment2
-comment3   '-' comment4; Char comment2
-comment4   '>' @
+comment1   '-' comment2
+comment2   CommentStart comment3
+comment3   '-' comment4; Char comment3
+comment4   '-' comment5; Char comment3
+comment5   '>' @
 
 
 # PI, starting from '<?', returns to @

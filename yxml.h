@@ -25,8 +25,7 @@
 
 
 typedef enum {
-	YXML_EEOF        = -7, /* Unexpected EOF                             */
-	YXML_EMULROOT    = -6, /* Document contains more than a single root element */
+	YXML_EEOF        = -6, /* Unexpected EOF                             */
 	YXML_EREF        = -5, /* Invalid character or entity reference (&whatever;) */
 	YXML_ECLOSE      = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
 	YXML_ESTACK      = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
@@ -99,7 +98,6 @@ typedef struct {
 	int nextstate; /* Used for '@' state remembering and for the "string" consuming state */
 	unsigned ignore;
 	unsigned char *string;
-	char afterelem;
 } yxml_t;
 
 
