@@ -267,4 +267,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 }
 
 
+yxml_ret_t yxml_eof(yxml_t *x) {
+	if(!x->afterelem || x->state != YXMLS_misc2)
+		return YXML_EEOF;
+	return YXML_OK;
+}
+
+
 /* vim: set noet sw=4 ts=4: */

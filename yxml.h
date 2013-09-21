@@ -25,6 +25,7 @@
 
 
 typedef enum {
+	YXML_EEOF        = -7, /* Unexpected EOF                             */
 	YXML_EMULROOT    = -6, /* Document contains more than a single root element */
 	YXML_EREF        = -5, /* Invalid character or entity reference (&whatever;) */
 	YXML_ECLOSE      = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
@@ -106,6 +107,15 @@ void yxml_init(yxml_t *x, char *stack, size_t stacksize);
 
 
 yxml_ret_t yxml_parse(yxml_t *x, int ch);
+
+
+/* May be called after the last character has been given to yxml_parse().
+ * Returns YXML_OK if the XML document is valid, YXML_EEOF otherwise.  Using
+ * this function isn't really necessary, but can be used to detect documents
+ * that don't end correctly. In particular, an error is returned when the XML
+ * document did not contain a (complete) root element, or when the document
+ * ended while in a comment or processing instruction. */
+yxml_ret_t yxml_eof(yxml_t *x);
 
 
 /* vim: set noet sw=4 ts=4: */
