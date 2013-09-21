@@ -65,15 +65,6 @@ static inline int yxml_setattrval(yxml_t *x, unsigned ch) {
 }
 
 
-/* Go to the misc1 or misc2 state, depending on whether a tag has been opened
- * previously or not. (This is a hack to work around a limitation in the state
- * machine description in yxml-states) */
-static inline int yxml_retmisc(yxml_t *x, unsigned ch) {
-	x->state = x->stacklen ? YXMLS_misc2 : YXMLS_misc1;
-	return YXML_OK;
-}
-
-
 static int yxml_pushstack(yxml_t *x, char **res, unsigned ch) {
 	if(x->stacklen+2 >= x->stacksize)
 		return YXML_ESTACK;
@@ -266,7 +257,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(ch == *x->string) {
 			x->string++;
 			if(!*x->string)
-				x->state = x->stringstate;
+				x->state = x->nextstate;
 			return YXML_OK;
 		}
 		break;

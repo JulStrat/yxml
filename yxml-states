@@ -29,8 +29,10 @@
 #       | C-char ('|' C-char)*
 #  Act  = FunctionName              # yxml_FunctionName(x, char)
 #       | '$' Varname               # Store current char into Varname
+#       | '@' State                 # Remember given state as future next state
 #       | "string"                  # consume string before moving to next state
-#  Next = State
+#  Next = State                     # Go to the given state
+#       | '@'                       # Go to a previously remembered state
 #
 # Basically, it's just a short notation for manually writing a DFA. The script
 # that compiles this to C is pretty simple and stupid, which explains the
@@ -40,6 +42,11 @@
 # sure how much control I'd lose over the size of the resulting state machine.
 #
 # 1. http://www.complang.org/ragel/
+#
+# Note that the '@' state remembering functionality and "string" consuming
+# action use the same variable to store the next state. This means that string
+# consuming should not be used when the last @ state still needs to be
+# remembered.
 
 init        '\xef' "\xbb\xbf" misc0; SP misc0; '<' le0
 
@@ -58,11 +65,11 @@ misc2      '<' le2; '&' refstart misc2a; Char setdata misc2
 misc2a     Ref ref misc2a; '\x3b' refend misc2
 
 le0        '!' lee1; '?' leq0; NameStart elemstart elem0
-le1        '!' lee1; '?' pi0; NameStart elemstart elem0
-le2        '!' lee2; '?' pi0; '/' etag0; NameStart elemstart elem0
+le1        '!' lee1; '?' @misc1 pi0; NameStart elemstart elem0
+le2        '!' lee2; '?' @misc2 pi0; '/' etag0; NameStart elemstart elem0
 
-lee1       '-' comment0; 'D' "OCTYPE" dt0
-lee2       '-' comment0; '[' "CDATA[" cd0
+lee1       '-' @misc1 comment0; 'D' "OCTYPE" dt0
+lee2       '-' @misc2 comment0; '[' "CDATA[" cd0
 leq0       'x' "ml" xmldecl0; NameStart pi1
 
 
@@ -97,21 +104,21 @@ std2       'y' "es" std3; 'n' "o" std3
 std3       $quote xmldecl6
 
 
-# Comment, after '<!-', returns to misc1 or misc2
+# Comment, after '<!-', returns to @
 comment0   '-' comment1
 comment1   CommentStart comment2
 comment2   '-' comment3; Char comment2
 comment3   '-' comment4; Char comment2
-comment4   '>' retmisc comment4
+comment4   '>' @
 
 
-# PI, starting from '<?', returns to misc1 or misc2
+# PI, starting from '<?', returns to @
 # TODO: Verify that the PI name isn't /xml/i
 # TODO: Pass the name and contents to the application
 pi0        NameStart pi1
 pi1        Name pi1; SP pi2
 pi2        '?' pi3; Char pi2
-pi3        '>' retmisc pi3; Char pi2
+pi3        '>' @; Char pi2
 
 
 # CDSect, starting from '<![DATA[', returns to misc2
@@ -125,6 +132,7 @@ cd2        '>' misc2
 #   validating its content. This hack fails if the DTD contains a '>'
 #   character, which is very possible. Unfortunately, just figuring out where a
 #   DTD ends already requires a rather elaborate parser. :-(
+# <DOCTYPE " " ' ' [ " " ' ' <? ?> <!-- --> < " " ' ' > ]>
 dt0        '>' misc1; Char dt0
 
 

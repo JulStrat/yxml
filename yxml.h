@@ -95,7 +95,7 @@ typedef struct {
 	unsigned char ref[8];
 	unsigned reflen;
 	unsigned quote;
-	int stringstate;
+	int nextstate; /* Used for '@' state remembering and for the "string" consuming state */
 	unsigned ignore;
 	unsigned char *string;
 	char afterelem;

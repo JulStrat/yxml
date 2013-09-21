@@ -122,15 +122,6 @@ static inline int yxml_setattrval(yxml_t *x, unsigned ch) {
 }
 
 
-/* Go to the misc1 or misc2 state, depending on whether a tag has been opened
- * previously or not. (This is a hack to work around a limitation in the state
- * machine description in yxml-states) */
-static inline int yxml_retmisc(yxml_t *x, unsigned ch) {
-	x->state = x->stacklen ? YXMLS_misc2 : YXMLS_misc1;
-	return YXML_OK;
-}
-
-
 static int yxml_pushstack(yxml_t *x, char **res, unsigned ch) {
 	if(x->stacklen+2 >= x->stacksize)
 		return YXML_ESTACK;
@@ -323,7 +314,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(ch == *x->string) {
 			x->string++;
 			if(!*x->string)
-				x->state = x->stringstate;
+				x->state = x->nextstate;
 			return YXML_OK;
 		}
 		break;
@@ -431,8 +422,10 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_comment4:
-		if(ch == (unsigned char)'>')
-			return yxml_retmisc(x, ch);
+		if(ch == (unsigned char)'>') {
+			x->state = x->nextstate;
+			return YXML_OK;
+		}
 		break;
 	case YXMLS_dt0:
 		if(ch == (unsigned char)'>') {
@@ -554,7 +547,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_init:
 		if(ch == (unsigned char)'\xef') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_misc0;
+			x->nextstate = YXMLS_misc0;
 			x->string = (unsigned char *)"\xbb\xbf";
 			return YXML_OK;
 		}
@@ -588,6 +581,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'?') {
 			x->state = YXMLS_pi0;
+			x->nextstate = YXMLS_misc1;
 			return YXML_OK;
 		}
 		if(yxml_isNameStart(ch)) {
@@ -602,6 +596,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'?') {
 			x->state = YXMLS_pi0;
+			x->nextstate = YXMLS_misc2;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'/') {
@@ -616,11 +611,12 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_lee1:
 		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment0;
+			x->nextstate = YXMLS_misc1;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'D') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_dt0;
+			x->nextstate = YXMLS_dt0;
 			x->string = (unsigned char *)"OCTYPE";
 			return YXML_OK;
 		}
@@ -628,11 +624,12 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_lee2:
 		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment0;
+			x->nextstate = YXMLS_misc2;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'[') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_cd0;
+			x->nextstate = YXMLS_cd0;
 			x->string = (unsigned char *)"CDATA[";
 			return YXML_OK;
 		}
@@ -640,7 +637,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_leq0:
 		if(ch == (unsigned char)'x') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_xmldecl0;
+			x->nextstate = YXMLS_xmldecl0;
 			x->string = (unsigned char *)"ml";
 			return YXML_OK;
 		}
@@ -708,8 +705,10 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		break;
 	case YXMLS_pi3:
-		if(ch == (unsigned char)'>')
-			return yxml_retmisc(x, ch);
+		if(ch == (unsigned char)'>') {
+			x->state = x->nextstate;
+			return YXML_OK;
+		}
 		if(yxml_isChar(ch)) {
 			x->state = YXMLS_pi2;
 			return YXML_OK;
@@ -735,13 +734,13 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_std2:
 		if(ch == (unsigned char)'y') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_std3;
+			x->nextstate = YXMLS_std3;
 			x->string = (unsigned char *)"es";
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'n') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_std3;
+			x->nextstate = YXMLS_std3;
 			x->string = (unsigned char *)"o";
 			return YXML_OK;
 		}
@@ -766,7 +765,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(ch == (unsigned char)'\'' || ch == (unsigned char)'"') {
 			x->state = YXMLS_string;
 			x->quote = ch;
-			x->stringstate = YXMLS_ver2;
+			x->nextstate = YXMLS_ver2;
 			x->string = (unsigned char *)"1.";
 			return YXML_OK;
 		}
@@ -796,7 +795,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		if(ch == (unsigned char)'v') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_ver0;
+			x->nextstate = YXMLS_ver0;
 			x->string = (unsigned char *)"ersion";
 			return YXML_OK;
 		}
@@ -820,7 +819,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'e') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_enc0;
+			x->nextstate = YXMLS_enc0;
 			x->string = (unsigned char *)"ncoding";
 			return YXML_OK;
 		}
@@ -848,7 +847,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'s') {
 			x->state = YXMLS_string;
-			x->stringstate = YXMLS_std0;
+			x->nextstate = YXMLS_std0;
 			x->string = (unsigned char *)"tandalone";
 			return YXML_OK;
 		}

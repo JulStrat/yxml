@@ -53,11 +53,12 @@ sub acttoc {
     push @c, "x->$1 = ch" if /^\$(.+)$/;
     if(/^"/) {
       push @c, (
-        "x->stringstate = YXMLS_$$next",
+        "x->nextstate = YXMLS_$$next",
         "x->string = (unsigned char *)$_"
       );
       $$next = 'string';
     }
+    push @c, "x->nextstate = YXMLS_$_" if s/^@//;
   }
   (
     map("$_;", @c),
@@ -79,6 +80,7 @@ sub gencode {
     my $needbrack = $next ne $state || @act > 1;
     push @code,
       "\tif($cond)".($needbrack ? ' {':''),
+      $next eq '@'    ? "\t\tx->state = x->nextstate;" :
       $next ne $state ? "\t\tx->state = YXMLS_$next;" : (),
       map("\t\t$_", @act),
       ($needbrack ? "\t}" : ());
