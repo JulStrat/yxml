@@ -33,11 +33,12 @@ typedef enum {
 	YXML_ESYN        = -1, /* Syntax error (unexpected byte)             */
 	YXML_OK          =  0, /* Character consumed, no new token present   */
 	YXML_ELEMSTART   =  1, /* Start of an element:   '<Tag ..'           */
-	YXML_ELEMEND     =  2, /* End of an element:     '.. />' or '</Tag>' */
-	YXML_ATTRSTART   =  4, /* Attribute:             'Name=..'          */
-	YXML_ATTREND     =  8, /* End of attribute       '.."'                */
-	YXML_CONTENT     = 16, /* Start of element content '.. />' or '.. >' */
-	YXML_DATA        = 32  /* Attribute value or element contents        */
+	YXML_CONTENT     =  2, /* Start of element content '.. />' or '.. >' */
+	                       /* 3 is used for YXML_ELEMSTART|YXML_CONTENT  */
+	YXML_ELEMEND     =  4, /* End of an element:     '.. />' or '</Tag>' */
+	YXML_ATTRSTART   =  5, /* Attribute:             'Name=..'           */
+	YXML_ATTREND     =  6, /* End of attribute       '.."'               */
+	YXML_DATA        =  7  /* Attribute value or element contents        */
 } yxml_ret_t;
 
 /* When, exactly, are tokens returned?
@@ -53,8 +54,9 @@ typedef enum {
  *         "X DATA
  *           'Y'  DATA
  *             'Z'  DATA
- *               "> ATTREND
- *               "/ CONTENT, '>' ELEMEND
+ *               '"' ATTREND
+ *                 '>' CONTENT
+ *                 '/' CONTENT, '>' ELEMEND
  *
  * </TagName
  *   '>' ELEMEND
