@@ -134,12 +134,21 @@ cd2        '>' misc2
 
 
 # Doctype, starting from '<!DOCTYPE', returns to misc1
-# TODO: This is a hack, all we do is read until we find a '>', not
-#   validating its content. This hack fails if the DTD contains a '>'
-#   character, which is very possible. Unfortunately, just figuring out where a
-#   DTD ends already requires a rather elaborate parser. :-(
-# <DOCTYPE " " ' ' [ " " ' ' <? ?> <!-- --> < " " ' ' > ]>
-dt0        '>' misc1; Char dt0
+# XXX: The state machine below only attempts to figure out where the doctype
+#   declaration ends, its contents are not actually parsed or validated.
+#   Basically, it allows the following nesting of tags/quotes/PIs/comments:
+#
+#     <!DOCTYPE ".." '..' <?PI ..?> <!--..--> <!.. ".." '.."> >
+#
+#   Only the last '>' is correctly recognized as the end of the declaration.
+#   Any other '>' found to end a tag/PI/comment, or found within quotes,
+#   comments or a PI, is ignored.
+# TODO: This still fails on conditional sections, which may nest.
+dt0        '>' misc1; '\''|'"' $quote @dt0 dt1; '<' dt2; Char dt0
+dt1        $quote @; Char dt1
+dt2        '?' @dt0 pi0; '!' dt3
+dt3        '-' @dt0 comment1; Char dt4
+dt4        '\''|'"' $quote @dt4 dt1; '>' dt0; Char dt4
 
 
 # End tag, after '</', returns to misc2

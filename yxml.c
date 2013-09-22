@@ -42,6 +42,10 @@ typedef enum {
 	YXMLS_comment4,
 	YXMLS_comment5,
 	YXMLS_dt0,
+	YXMLS_dt1,
+	YXMLS_dt2,
+	YXMLS_dt3,
+	YXMLS_dt4,
 	YXMLS_elem0,
 	YXMLS_elem1,
 	YXMLS_elem2,
@@ -439,6 +443,60 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_dt0:
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc1;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'\'' || ch == (unsigned char)'"') {
+			x->state = YXMLS_dt1;
+			x->quote = ch;
+			x->nextstate = YXMLS_dt0;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'<') {
+			x->state = YXMLS_dt2;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
+		break;
+	case YXMLS_dt1:
+		if(x->quote == ch) {
+			x->state = x->nextstate;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
+		break;
+	case YXMLS_dt2:
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi0;
+			x->nextstate = YXMLS_dt0;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'!') {
+			x->state = YXMLS_dt3;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_dt3:
+		if(ch == (unsigned char)'-') {
+			x->state = YXMLS_comment1;
+			x->nextstate = YXMLS_dt0;
+			return YXML_OK;
+		}
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_dt4;
+			return YXML_OK;
+		}
+		break;
+	case YXMLS_dt4:
+		if(ch == (unsigned char)'\'' || ch == (unsigned char)'"') {
+			x->state = YXMLS_dt1;
+			x->quote = ch;
+			x->nextstate = YXMLS_dt4;
+			return YXML_OK;
+		}
+		if(ch == (unsigned char)'>') {
+			x->state = YXMLS_dt0;
 			return YXML_OK;
 		}
 		if(yxml_isChar(ch))
