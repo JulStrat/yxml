@@ -75,7 +75,7 @@ le3        '!' @misc3 comment0; '?' @misc3 pi0
 
 lee1       '-' @misc1 comment1; 'D' "OCTYPE" dt0
 lee2       '-' @misc2 comment1; '[' "CDATA[" cd0
-leq0       'x' "ml" xmldecl0; NameStart pi1
+leq0       'x' "ml" xmldecl0; NameStart @misc1 pi1
 
 
 # XMLDecl, starting from '<?xml', returns to misc1

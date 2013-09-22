@@ -722,6 +722,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_pi1;
+			x->nextstate = YXMLS_misc1;
 			return YXML_OK;
 		}
 		break;
