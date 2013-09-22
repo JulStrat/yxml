@@ -912,7 +912,9 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'s') {
-			x->state = YXMLS_std0;
+			x->state = YXMLS_string;
+			x->nextstate = YXMLS_std0;
+			x->string = (unsigned char *)"tandalone";
 			return YXML_OK;
 		}
 		break;

@@ -82,7 +82,7 @@ leq0       'x' "ml" xmldecl0; NameStart @misc1 pi1
 xmldecl0    SP xmldecl1
 xmldecl1    SP xmldecl1; 'v' "ersion" ver0
 xmldecl2    SP xmldecl3; '?' xmldecl7
-xmldecl3    SP xmldecl3; '?' xmldecl7; 'e' "ncoding" enc0; 's' std0
+xmldecl3    SP xmldecl3; '?' xmldecl7; 'e' "ncoding" enc0; 's' "tandalone" std0
 xmldecl4    SP xmldecl5; '?' xmldecl7
 xmldecl5    SP xmldecl5; '?' xmldecl7; 's' "tandalone" std0
 xmldecl6    SP xmldecl6; '?' xmldecl7
