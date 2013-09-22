@@ -34,7 +34,7 @@ typedef enum {
 	YXML_OK          =  0, /* Character consumed, no new token present   */
 	YXML_ELEMSTART   =  1, /* Start of an element:   '<Tag ..'           */
 	YXML_CONTENT     =  2, /* Start of element content '.. />' or '.. >' */
-	                       /* 3 is used for YXML_ELEMSTART|YXML_CONTENT  */
+	YXML_ELEMSTCONT  =  3, /* Same as YXML_ELEMSTART|YXML_CONTENT  */
 	YXML_ELEMEND     =  4, /* End of an element:     '.. />' or '</Tag>' */
 	YXML_ATTRSTART   =  5, /* Attribute:             'Name=..'           */
 	YXML_ATTREND     =  6, /* End of attribute       '.."'               */
