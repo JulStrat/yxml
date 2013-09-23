@@ -1,0 +1,9 @@
+<a>ZOMFG! Element	content!
+
+<entities>&amp;&lt;&gt;&apos;&quot;</entities>
+<refs>&#x20;&#33;&#x0020;&#0033;</refs>
+<![CDATA[CDATA!]]>
+<![CDATA[[[CD<a/> <!-- no comment -->&amp;<?NotaPI?>&notaref;
+Bug: The following character *should* be parsed as a DATA token, but currently isn't: ]
+This does work, however: ]]]]>
+</a>

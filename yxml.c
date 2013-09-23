@@ -371,9 +371,15 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_cd2:
+		if(ch == (unsigned char)']')
+			return yxml_setdata(x, ch);
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
 			return YXML_OK;
+		}
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_cd0;
+			return yxml_setdata(x, ch);
 		}
 		break;
 	case YXMLS_comment0:

@@ -1,0 +1,16 @@
+
+elemstart a
+content
+data ZOMFG! Element\x09content!\x0a\x0a
+elemstart entities
+content
+data &<>'"
+elemend
+data \x0a
+elemstart refs
+content
+data  ! !
+elemend
+data \x0aCDATA!\x0a[[CD<a/> <!-- no comment -->&amp;<?NotaPI?>&notaref;\x0aBug: The following character *should* be parsed as a DATA token, but currently isn't: \x0aThis does work, however: ]]\x0a
+elemend
+ok

@@ -126,9 +126,12 @@ pi4        '>' pivalend @
 
 
 # CDSect, starting from '<![DATA[', returns to misc2
+# TODO: "<![CDATA[ ] ]]>" is parsed correctly, but the ']' is not sent to
+#   the application as a DATA token. No idea how to easily fix that. Currently,
+#   "<![CDATA[ ]]]]>" does work correctly.
 cd0        ']' cd1; Char setdata cd0
 cd1        ']' cd2; Char setdata cd0
-cd2        '>' misc2
+cd2        ']' setdata cd2; '>' misc2; Char setdata cd0
 
 
 # Doctype, starting from '<!DOCTYPE', returns to misc1
