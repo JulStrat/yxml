@@ -94,19 +94,10 @@ static void yxml_popstack(yxml_t *x) {
 }
 
 
-static inline int yxml_elemstart(yxml_t *x, unsigned ch) {
-	return yxml_pushstack(x, &x->elem, ch);
-}
-
-
-static inline int yxml_elemname(yxml_t *x, unsigned ch) {
-	return yxml_pushstackc(x, ch);
-}
-
-
-static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
-	return YXML_ELEMSTART;
-}
+static inline int yxml_elemstart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->elem, ch); }
+static inline int yxml_elemname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_elemnameend(yxml_t *x, unsigned ch) { return YXML_ELEMSTART; }
+static inline int yxml_content    (yxml_t *x, unsigned ch) { return YXML_CONTENT; }
 
 
 /* Also used in yxml_elemcloseend(), since this function just removes the last
@@ -140,30 +131,18 @@ static inline int yxml_elemcloseend(yxml_t *x, unsigned ch) {
 }
 
 
-static inline int yxml_attrstart(yxml_t *x, unsigned ch) {
-	return yxml_pushstack(x, &x->attr, ch);
+static inline int yxml_attrstart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->attr, ch); }
+static inline int yxml_attrname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_attrnameend(yxml_t *x, unsigned ch) { return YXML_ATTRSTART; }
+static inline int yxml_attrvalend (yxml_t *x, unsigned ch) { yxml_popstack(x); return YXML_ATTREND; }
+
+
+static inline int yxml_pistart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->pi, ch); }
+static inline int yxml_piname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_pinameend(yxml_t *x, unsigned ch) {
+	return (x->pi[0]|32) == 'x' && (x->pi[1]|32) == 'm' && (x->pi[2]|32) == 'l' && !x->pi[3] ? YXML_ESYN : YXML_PISTART;
 }
-
-
-static inline int yxml_attrname(yxml_t *x, unsigned ch) {
-	return yxml_pushstackc(x, ch);
-}
-
-
-static inline int yxml_attrnameend(yxml_t *x, unsigned ch) {
-	return YXML_ATTRSTART;
-}
-
-
-static inline int yxml_attrvalend(yxml_t *x, unsigned ch) {
-	yxml_popstack(x);
-	return YXML_ATTREND;
-}
-
-
-static inline int yxml_content(yxml_t *x, unsigned ch) {
-	return YXML_CONTENT;
-}
+static inline int yxml_pivalend (yxml_t *x, unsigned ch) { yxml_popstack(x); x->pi = (char *)x->stack; return YXML_PIEND; }
 
 
 static inline int yxml_refstart(yxml_t *x, unsigned ch) {
@@ -223,7 +202,7 @@ void yxml_init(yxml_t *x, char *stack, size_t stacksize) {
 	x->stack = (unsigned char *)stack;
 	x->stacksize = stacksize;
 	*x->stack = 0;
-	x->elem = (char *)x->stack;
+	x->elem = x->pi = (char *)x->stack;
 	x->state = YXMLS_init;
 }
 

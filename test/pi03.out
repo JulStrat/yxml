@@ -1,0 +1,8 @@
+
+pistart XMLData
+data <? > <!--abc--> ?
+piend
+elemstart a
+content
+elemend
+ok

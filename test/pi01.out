@@ -1,0 +1,8 @@
+
+pistart SomePI
+data abc?
+piend
+elemstart a
+content
+elemend
+ok

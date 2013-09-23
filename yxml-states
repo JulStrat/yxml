@@ -75,7 +75,7 @@ le3        '!' @misc3 comment0; '?' @misc3 pi0
 
 lee1       '-' @misc1 comment1; 'D' "OCTYPE" dt0
 lee2       '-' @misc2 comment1; '[' "CDATA[" cd0
-leq0       'x' "ml" xmldecl0; NameStart @misc1 pi1
+leq0       'x' "ml" xmldecl0; NameStart @misc1 pistart pi1
 
 
 # XMLDecl, starting from '<?xml', returns to misc1
@@ -119,12 +119,11 @@ comment5   '>' @
 
 
 # PI, starting from '<?', returns to @
-# TODO: Verify that the PI name isn't /xml/i
-# TODO: Pass the name and contents to the application
-pi0        NameStart pi1
-pi1        Name pi1; SP pi2
-pi2        '?' pi3; Char pi2
-pi3        '>' @; Char pi2
+pi0        NameStart pistart pi1
+pi1        Name piname pi1; '?' pinameend pi4; SP pinameend pi2
+pi2        '?' setdata pi3; Char setdata pi2
+pi3        '>' pivalend @; Char setdata pi2
+pi4        '>' pivalend @
 
 
 # CDSect, starting from '<![DATA[', returns to misc2

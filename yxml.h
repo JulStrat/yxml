@@ -36,9 +36,11 @@ typedef enum {
 	YXML_CONTENT     =  2, /* Start of element content '.. />' or '.. >' */
 	YXML_ELEMSTCONT  =  3, /* Same as YXML_ELEMSTART|YXML_CONTENT  */
 	YXML_ELEMEND     =  4, /* End of an element:     '.. />' or '</Tag>' */
-	YXML_ATTRSTART   =  5, /* Attribute:             'Name=..'           */
-	YXML_ATTREND     =  6, /* End of attribute       '.."'               */
-	YXML_DATA        =  7  /* Attribute value or element contents        */
+	YXML_DATA        =  5, /* Attribute value or element/PI contents     */
+	YXML_ATTRSTART   =  6, /* Attribute:             'Name=..'           */
+	YXML_ATTREND     =  7, /* End of attribute       '.."'               */
+	YXML_PISTART     =  8, /* Start of a processing instruction          */
+	YXML_PIEND       =  9  /* End of a processing instruction            */
 } yxml_ret_t;
 
 /* When, exactly, are tokens returned?
@@ -72,13 +74,22 @@ typedef struct {
 	 * including the YXML_ELEMCLOSE for the corresponding element. */
 	char *elem;
 
-	/* The last read character of an attribute value or element data. Changed
-	 * after YXML_DATA and only valid until the next yxml_parse() call. */
+	/* The last read character of an attribute value, element data, or
+	 * processing instruction. Changed after YXML_DATA and only valid until the
+	 * next yxml_parse() call.
+	 * Note: For processing instructions, the last '?' is considered part of
+	 *   the data, unless the PI was empty (e.g. "<?SomePI?>"), in which case
+	 *   no DATA token is emitted at all. */
 	char data;
 
 	/* Name of the current attribute. Changed after YXML_ATTRSTART, valid up to
 	 * and including the next YXML_ATTREND. */
 	char *attr;
+
+	/* Name/target of the current processing instruction, zero-length if not in
+	 * a PI. Changed after YXML_PISTART, valid up to (but excluding)
+	 * the next YXML_PIEND. */
+	char *pi;
 
 	/* Line number, byte offset within that line, and total bytes read. These
 	 * values refer to the position _after_ the last byte given to
@@ -90,7 +101,7 @@ typedef struct {
 
 	/* PRIVATE */
 	int state;
-	unsigned char *stack; /* Stack of element names + attribute name, separated by \0. Also starts with a \0. */
+	unsigned char *stack; /* Stack of element names + attribute/PI name, separated by \0. Also starts with a \0. */
 	size_t stacksize, stacklen;
 	unsigned char ref[8];
 	unsigned reflen;

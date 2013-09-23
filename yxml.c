@@ -74,6 +74,7 @@ typedef enum {
 	YXMLS_pi1,
 	YXMLS_pi2,
 	YXMLS_pi3,
+	YXMLS_pi4,
 	YXMLS_std0,
 	YXMLS_std1,
 	YXMLS_std2,
@@ -158,19 +159,10 @@ static void yxml_popstack(yxml_t *x) {
 }
 
 
-static inline int yxml_elemstart(yxml_t *x, unsigned ch) {
-	return yxml_pushstack(x, &x->elem, ch);
-}
-
-
-static inline int yxml_elemname(yxml_t *x, unsigned ch) {
-	return yxml_pushstackc(x, ch);
-}
-
-
-static inline int yxml_elemnameend(yxml_t *x, unsigned ch) {
-	return YXML_ELEMSTART;
-}
+static inline int yxml_elemstart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->elem, ch); }
+static inline int yxml_elemname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_elemnameend(yxml_t *x, unsigned ch) { return YXML_ELEMSTART; }
+static inline int yxml_content    (yxml_t *x, unsigned ch) { return YXML_CONTENT; }
 
 
 /* Also used in yxml_elemcloseend(), since this function just removes the last
@@ -204,30 +196,18 @@ static inline int yxml_elemcloseend(yxml_t *x, unsigned ch) {
 }
 
 
-static inline int yxml_attrstart(yxml_t *x, unsigned ch) {
-	return yxml_pushstack(x, &x->attr, ch);
+static inline int yxml_attrstart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->attr, ch); }
+static inline int yxml_attrname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_attrnameend(yxml_t *x, unsigned ch) { return YXML_ATTRSTART; }
+static inline int yxml_attrvalend (yxml_t *x, unsigned ch) { yxml_popstack(x); return YXML_ATTREND; }
+
+
+static inline int yxml_pistart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->pi, ch); }
+static inline int yxml_piname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_pinameend(yxml_t *x, unsigned ch) {
+	return (x->pi[0]|32) == 'x' && (x->pi[1]|32) == 'm' && (x->pi[2]|32) == 'l' && !x->pi[3] ? YXML_ESYN : YXML_PISTART;
 }
-
-
-static inline int yxml_attrname(yxml_t *x, unsigned ch) {
-	return yxml_pushstackc(x, ch);
-}
-
-
-static inline int yxml_attrnameend(yxml_t *x, unsigned ch) {
-	return YXML_ATTRSTART;
-}
-
-
-static inline int yxml_attrvalend(yxml_t *x, unsigned ch) {
-	yxml_popstack(x);
-	return YXML_ATTREND;
-}
-
-
-static inline int yxml_content(yxml_t *x, unsigned ch) {
-	return YXML_CONTENT;
-}
+static inline int yxml_pivalend (yxml_t *x, unsigned ch) { yxml_popstack(x); x->pi = (char *)x->stack; return YXML_PIEND; }
 
 
 static inline int yxml_refstart(yxml_t *x, unsigned ch) {
@@ -287,7 +267,7 @@ void yxml_init(yxml_t *x, char *stack, size_t stacksize) {
 	x->stack = (unsigned char *)stack;
 	x->stacksize = stacksize;
 	*x->stack = 0;
-	x->elem = (char *)x->stack;
+	x->elem = x->pi = (char *)x->stack;
 	x->state = YXMLS_init;
 }
 
@@ -723,7 +703,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_pi1;
 			x->nextstate = YXMLS_misc1;
-			return YXML_OK;
+			return yxml_pistart(x, ch);
 		}
 		break;
 	case YXMLS_misc0:
@@ -773,33 +753,43 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_pi0:
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_pi1;
-			return YXML_OK;
+			return yxml_pistart(x, ch);
 		}
 		break;
 	case YXMLS_pi1:
 		if(yxml_isName(ch))
-			return YXML_OK;
+			return yxml_piname(x, ch);
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi4;
+			return yxml_pinameend(x, ch);
+		}
 		if(yxml_isSP(ch)) {
 			x->state = YXMLS_pi2;
-			return YXML_OK;
+			return yxml_pinameend(x, ch);
 		}
 		break;
 	case YXMLS_pi2:
 		if(ch == (unsigned char)'?') {
 			x->state = YXMLS_pi3;
-			return YXML_OK;
+			return yxml_setdata(x, ch);
 		}
 		if(yxml_isChar(ch))
-			return YXML_OK;
+			return yxml_setdata(x, ch);
 		break;
 	case YXMLS_pi3:
 		if(ch == (unsigned char)'>') {
 			x->state = x->nextstate;
-			return YXML_OK;
+			return yxml_pivalend(x, ch);
 		}
 		if(yxml_isChar(ch)) {
 			x->state = YXMLS_pi2;
-			return YXML_OK;
+			return yxml_setdata(x, ch);
+		}
+		break;
+	case YXMLS_pi4:
+		if(ch == (unsigned char)'>') {
+			x->state = x->nextstate;
+			return yxml_pivalend(x, ch);
 		}
 		break;
 	case YXMLS_std0:
