@@ -40,7 +40,6 @@ typedef enum {
 	YXMLS_comment2,
 	YXMLS_comment3,
 	YXMLS_comment4,
-	YXMLS_comment5,
 	YXMLS_dt0,
 	YXMLS_dt1,
 	YXMLS_dt2,
@@ -101,7 +100,6 @@ typedef enum {
 #define yxml_isNum(c) (c-'0' < 10)
 #define yxml_isHex(c) (yxml_isNum(c) || (c|32)-'a' < 6)
 #define yxml_isEncName(c) (yxml_isAlpha(c) || yxml_isNum(c) || c == '.' || c == '_' || c == '-')
-#define yxml_isCommentStart(c) (yxml_isChar(c) && c != '-')
 #define yxml_isNameStart(c) (yxml_isAlpha(c) || c == ':' || c == '_')
 #define yxml_isName(c) (yxml_isNameStart(c) || yxml_isNum(c) || c == '-' || c == '.')
 /* XXX: The valid characters are dependent on the quote char, hence the access to x->quote */
@@ -391,30 +389,24 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		break;
 	case YXMLS_comment2:
-		if(yxml_isCommentStart(ch)) {
+		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment3;
 			return YXML_OK;
 		}
+		if(yxml_isChar(ch))
+			return YXML_OK;
 		break;
 	case YXMLS_comment3:
 		if(ch == (unsigned char)'-') {
 			x->state = YXMLS_comment4;
 			return YXML_OK;
 		}
-		if(yxml_isChar(ch))
+		if(yxml_isChar(ch)) {
+			x->state = YXMLS_comment2;
 			return YXML_OK;
+		}
 		break;
 	case YXMLS_comment4:
-		if(ch == (unsigned char)'-') {
-			x->state = YXMLS_comment5;
-			return YXML_OK;
-		}
-		if(yxml_isChar(ch)) {
-			x->state = YXMLS_comment3;
-			return YXML_OK;
-		}
-		break;
-	case YXMLS_comment5:
 		if(ch == (unsigned char)'>') {
 			x->state = x->nextstate;
 			return YXML_OK;

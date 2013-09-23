@@ -112,10 +112,9 @@ std3       $quote xmldecl6
 # Comment, after '<!', returns to @
 comment0   '-' comment1
 comment1   '-' comment2
-comment2   CommentStart comment3
-comment3   '-' comment4; Char comment3
-comment4   '-' comment5; Char comment3
-comment5   '>' @
+comment2   '-' comment3; Char comment2
+comment3   '-' comment4; Char comment2
+comment4   '>' @
 
 
 # PI, starting from '<?', returns to @
