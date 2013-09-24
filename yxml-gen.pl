@@ -49,7 +49,7 @@ sub acttoc {
   # return an error code. Functions that may return an error should NOT be
   # called in the same state as other functions.
   for(@_) {
-    push @r, "yxml_$1(x, ch)" if /^([a-z_]+)$/;
+    push @r, "yxml_$1(x, ch)" if /^([a-z0-9_]+)$/;
     push @c, "x->$1 = ch" if /^\$(.+)$/;
     if(/^"/) {
       push @c, (

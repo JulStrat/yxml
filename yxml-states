@@ -120,18 +120,15 @@ comment4   '>' @
 # PI, starting from '<?', returns to @
 pi0        NameStart pistart pi1
 pi1        Name piname pi1; '?' pinameend pi4; SP pinameend pi2
-pi2        '?' datahold pi3; Char dataset pi2
-pi3        '>' pivalend @; Char datarelease pi2
+pi2        '?' pi3; Char dataset pi2
+pi3        '>' pivalend @; Char datapi pi2
 pi4        '>' pivalend @
 
 
 # CDSect, starting from '<![DATA[', returns to misc2
-# TODO: "<![CDATA[ ] ]]>" is parsed correctly, but the ']' is not sent to
-#   the application as a DATA token. No idea how to easily fix that. Currently,
-#   "<![CDATA[ ]]]]>" does work correctly.
 cd0        ']' cd1; Char dataset cd0
-cd1        ']' cd2; Char dataset cd0
-cd2        ']' dataset cd2; '>' misc2; Char dataset cd0
+cd1        ']' cd2; Char datacd1 cd0
+cd2        ']' dataset cd2; '>' misc2; Char datacd2 cd0
 
 
 # Doctype, starting from '<!DOCTYPE', returns to misc1
@@ -173,6 +170,6 @@ elem3      '>' selfclose misc2
 attr0      Name attrname attr0; SP attrnameend attr1; '=' attrnameend attr2
 attr1      SP attr1; '=' attr2
 attr2      SP attr2; '\''|'"' $quote attr3
-attr3      AttValue attrvalset attr3; '&' refstart attr4; $quote attrvalend elem2
+attr3      AttValue dataattr attr3; '&' refstart attr4; $quote attrvalend elem2
 attr4      Ref ref attr4; '\x3b' refend attr3
 
