@@ -120,8 +120,8 @@ comment4   '>' @
 # PI, starting from '<?', returns to @
 pi0        NameStart pistart pi1
 pi1        Name piname pi1; '?' pinameend pi4; SP pinameend pi2
-pi2        '?' dataset pi3; Char dataset pi2
-pi3        '>' pivalend @; Char dataset pi2
+pi2        '?' datahold pi3; Char dataset pi2
+pi3        '>' pivalend @; Char datarelease pi2
 pi4        '>' pivalend @
 
 

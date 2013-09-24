@@ -128,6 +128,23 @@ static inline int yxml_dataset(yxml_t *x, unsigned ch) {
 }
 
 
+static inline int yxml_datahold(yxml_t *x, unsigned ch) {
+	yxml_setchar(x->data, ch);
+	x->data[1] = 0;
+	return YXML_OK;
+}
+
+
+static inline int yxml_datarelease(yxml_t *x, unsigned ch) {
+	char *r = x->data;
+	while(*r)
+		r++;
+	yxml_setchar(r, ch);
+	r[1] = 0;
+	return YXML_DATA;
+}
+
+
 static inline int yxml_attrvalset(yxml_t *x, unsigned ch) {
 	/* Normalize attribute values according to the XML spec section 3.3.3. */
 	return yxml_dataset(x, ch == 0x9 || ch == 0xa ? 0x20 : ch);
@@ -775,7 +792,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 	case YXMLS_pi2:
 		if(ch == (unsigned char)'?') {
 			x->state = YXMLS_pi3;
-			return yxml_dataset(x, ch);
+			return yxml_datahold(x, ch);
 		}
 		if(yxml_isChar(ch))
 			return yxml_dataset(x, ch);
@@ -787,7 +804,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(yxml_isChar(ch)) {
 			x->state = YXMLS_pi2;
-			return yxml_dataset(x, ch);
+			return yxml_datarelease(x, ch);
 		}
 		break;
 	case YXMLS_pi4:

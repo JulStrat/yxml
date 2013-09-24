@@ -1,6 +1,6 @@
 
 pistart SomePI
-data abc?
+data abc
 piend
 elemstart a
 content

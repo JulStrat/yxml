@@ -76,10 +76,11 @@ typedef struct {
 
 	/* The last read character(s) of an attribute value, element data, or
 	 * processing instruction. Changed after YXML_DATA and only valid until the
-	 * next yxml_parse() call. Currently, only the first byte is ever set.
-	 * Note: For processing instructions, the last '?' is considered part of
-	 *   the data, unless the PI was empty (e.g. "<?SomePI?>"), in which case
-	 *   no DATA token is emitted at all. */
+	 * next yxml_parse() call. Usually, this string only consists of a single
+	 * character, but multiple characters may be returned in the following case:
+	 * - "<?SomePI ?x ?>": The two characters "?x" are returned in a single
+	 *   data token.
+	 */
 	char data[8];
 
 	/* Name of the current attribute. Changed after YXML_ATTRSTART, valid up to

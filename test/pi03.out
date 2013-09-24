@@ -1,6 +1,6 @@
 
 pistart XMLData
-data <? > <!--abc--> ?
+data <? > <!--abc--> 
 piend
 elemstart a
 content
