@@ -87,7 +87,7 @@ static void y_printres(yxml_t *x, yxml_ret_t r) {
 			y_printtoken(x, "data ");
 			indata = 1;
 		}
-		y_printchar(x->data);
+		y_printstring(x->data);
 		break;
 	case YXML_PISTART:
 		y_printtoken(x, "pistart ");

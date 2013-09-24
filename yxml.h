@@ -74,13 +74,13 @@ typedef struct {
 	 * including the YXML_ELEMCLOSE for the corresponding element. */
 	char *elem;
 
-	/* The last read character of an attribute value, element data, or
+	/* The last read character(s) of an attribute value, element data, or
 	 * processing instruction. Changed after YXML_DATA and only valid until the
-	 * next yxml_parse() call.
+	 * next yxml_parse() call. Currently, only the first byte is ever set.
 	 * Note: For processing instructions, the last '?' is considered part of
 	 *   the data, unless the PI was empty (e.g. "<?SomePI?>"), in which case
 	 *   no DATA token is emitted at all. */
-	char data;
+	char data[8];
 
 	/* Name of the current attribute. Changed after YXML_ATTRSTART, valid up to
 	 * and including the next YXML_ATTREND. */
@@ -103,7 +103,6 @@ typedef struct {
 	int state;
 	unsigned char *stack; /* Stack of element names + attribute/PI name, separated by \0. Also starts with a \0. */
 	size_t stacksize, stacklen;
-	unsigned char ref[8];
 	unsigned reflen;
 	unsigned quote;
 	int nextstate; /* Used for '@' state remembering and for the "string" consuming state */

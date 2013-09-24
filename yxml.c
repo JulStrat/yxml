@@ -110,14 +110,20 @@ typedef enum {
 #define yxml_isRef(c) (yxml_isNum(c) || yxml_isAlpha(c) || c == '#')
 
 
-/* Set the x->data value to ch and tell the application we have some data.
- * This can't be done with simple assignment because char may be unsigned, and
+/* Set the given char value to ch (0<=ch<=255).
+ * This can't be done with simple assignment because char may be signed, and
  * unsigned-to-signed overflow is implementation defined in C. This function
  * /looks/ inefficient, but gcc compiles it down to a single movb instruction
  * on x86, even with -O0. */
-static inline int yxml_setdata(yxml_t *x, unsigned ch) {
+static inline void yxml_setchar(char *dest, unsigned ch) {
 	unsigned char _ch = ch;
-	memcpy(&x->data, &_ch, 1);
+	memcpy(dest, &_ch, 1);
+}
+
+
+static inline int yxml_setdata(yxml_t *x, unsigned ch) {
+	yxml_setchar(x->data, ch);
+	x->data[1] = 0;
 	return YXML_DATA;
 }
 
@@ -209,23 +215,23 @@ static inline int yxml_pivalend (yxml_t *x, unsigned ch) { yxml_popstack(x); x->
 
 
 static inline int yxml_refstart(yxml_t *x, unsigned ch) {
-	memset(x->ref, 0, sizeof(x->ref));
+	memset(x->data, 0, sizeof(x->data));
 	x->reflen = 0;
 	return YXML_OK;
 }
 
 
 static int yxml_ref(yxml_t *x, unsigned ch) {
-	if(x->reflen >= sizeof(x->ref)-1)
+	if(x->reflen >= sizeof(x->data)-1)
 		return YXML_EREF;
-	x->ref[x->reflen] = ch;
+	yxml_setchar(x->data+x->reflen, ch);
 	x->reflen++;
 	return YXML_OK;
 }
 
 
 static int yxml_refend(yxml_t *x, unsigned ch) {
-	unsigned char *r = x->ref;
+	unsigned char *r = (unsigned char *)x->data;
 	ch = 0;
 	if(*r == '#') {
 		if(r[1] == 'x')
