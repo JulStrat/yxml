@@ -64,7 +64,7 @@ init        '\xef' "\xbb\xbf" misc0; SP misc0; '<' le0
 # closed, yxml_selfclose() does this.
 misc0      SP misc0; '<' le0
 misc1      SP misc1; '<' le1
-misc2      '<' le2; '&' refstart misc2a; Char setdata misc2
+misc2      '<' le2; '&' refstart misc2a; Char dataset misc2
 misc2a     Ref ref misc2a; '\x3b' refend misc2
 misc3      SP misc3; '<' le3
 
@@ -120,8 +120,8 @@ comment4   '>' @
 # PI, starting from '<?', returns to @
 pi0        NameStart pistart pi1
 pi1        Name piname pi1; '?' pinameend pi4; SP pinameend pi2
-pi2        '?' setdata pi3; Char setdata pi2
-pi3        '>' pivalend @; Char setdata pi2
+pi2        '?' dataset pi3; Char dataset pi2
+pi3        '>' pivalend @; Char dataset pi2
 pi4        '>' pivalend @
 
 
@@ -129,9 +129,9 @@ pi4        '>' pivalend @
 # TODO: "<![CDATA[ ] ]]>" is parsed correctly, but the ']' is not sent to
 #   the application as a DATA token. No idea how to easily fix that. Currently,
 #   "<![CDATA[ ]]]]>" does work correctly.
-cd0        ']' cd1; Char setdata cd0
-cd1        ']' cd2; Char setdata cd0
-cd2        ']' setdata cd2; '>' misc2; Char setdata cd0
+cd0        ']' cd1; Char dataset cd0
+cd1        ']' cd2; Char dataset cd0
+cd2        ']' dataset cd2; '>' misc2; Char dataset cd0
 
 
 # Doctype, starting from '<!DOCTYPE', returns to misc1
@@ -173,6 +173,6 @@ elem3      '>' selfclose misc2
 attr0      Name attrname attr0; SP attrnameend attr1; '=' attrnameend attr2
 attr1      SP attr1; '=' attr2
 attr2      SP attr2; '\''|'"' $quote attr3
-attr3      AttValue setattrval attr3; '&' refstart attr4; $quote attrvalend elem2
+attr3      AttValue attrvalset attr3; '&' refstart attr4; $quote attrvalend elem2
 attr4      Ref ref attr4; '\x3b' refend attr3
 
