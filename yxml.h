@@ -77,10 +77,12 @@ typedef struct {
 	/* The last read character(s) of an attribute value, element data, or
 	 * processing instruction. Changed after YXML_DATA and only valid until the
 	 * next yxml_parse() call. Usually, this string only consists of a single
-	 * character, but multiple characters are returned in the following cases:
+	 * byte, but multiple bytes are returned in the following cases:
 	 * - "<?SomePI ?x ?>": The two characters "?x"
 	 * - "<![CDATA[ ]x ]]>": The two characters "]x"
 	 * - "<![CDATA[ ]]x ]]>": The three characters "]]x"
+	 * - "&#N;" and "&#xN;", where dec(n) > 127. The referenced Unicode
+	 *   character is then encoded in multiple UTF-8 bytes.
 	 */
 	char data[8];
 

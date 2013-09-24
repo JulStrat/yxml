@@ -121,6 +121,28 @@ static inline void yxml_setchar(char *dest, unsigned ch) {
 }
 
 
+/* Similar to yxml_setchar(), but will convert ch (any valid unicode point) to
+ * UTF-8 and appends a '\0'. dest must have room for at least 5 bytes. */
+static void yxml_setutf8(char *dest, unsigned ch) {
+	if(ch <= 0x007F)
+		yxml_setchar(dest++, ch);
+	else if(ch <= 0x07FF) {
+		yxml_setchar(dest++, 0xC0 | (ch>>6));
+		yxml_setchar(dest++, 0x80 | (ch & 0x3F));
+	} else if(ch <= 0xFFFF) {
+		yxml_setchar(dest++, 0xE0 | (ch>>12));
+		yxml_setchar(dest++, 0x80 | ((ch>>6) & 0x3F));
+		yxml_setchar(dest++, 0x80 | (ch & 0x3F));
+	} else {
+		yxml_setchar(dest++, 0xF0 | (ch>>18));
+		yxml_setchar(dest++, 0x80 | ((ch>>12) & 0x3F));
+		yxml_setchar(dest++, 0x80 | ((ch>>6) & 0x3F));
+		yxml_setchar(dest++, 0x80 | (ch & 0x3F));
+	}
+	*dest = 0;
+}
+
+
 static inline int yxml_dataset(yxml_t *x, unsigned ch) {
 	yxml_setchar(x->data, ch);
 	x->data[1] = 0;
@@ -282,11 +304,11 @@ static int yxml_refend(yxml_t *x, unsigned ch) {
 			ch = '"';
 	}
 
-	/* XXX: The API does not allow returning more than one byte at a time, so
-	 * CharRefs only work for ASCII at the moment. This is kind of stupid. */
-	if(!ch || ch > 127)
+	/* Codepoints not allowed in the XML 1.1 definition of a Char */
+	if(!ch || ch > 0x10FFFF || ch == 0xFFFE || ch == 0xFFFF || (ch-0xDFFF) < 0x7FF)
 		return YXML_EREF;
-	return yxml_dataset(x, ch);
+	yxml_setutf8(x->data, ch);
+	return YXML_DATA;
 }
 
 
