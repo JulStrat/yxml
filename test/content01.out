@@ -1,16 +1,13 @@
 
 elemstart a
-content
-data ZOMFG! Element\x09content!\x0a\x0a
+content ZOMFG! Element\x09content!\x0a\x0a
 elemstart entities
-content
-data &<>'"
+content &<>'"
 elemend
-data \x0a
+content \x0a
 elemstart refs
-content
-data  ! !é☃🐱
+content  ! !é☃🐱
 elemend
-data \x0aCDATA!\x0a[[CD<a/> <!-- no comment -->&amp;<?NotaPI?>&notaref;\x0a]x]]y]]]z]]\x0a
+content \x0aCDATA!\x0a[[CD<a/> <!-- no comment -->&amp;<?NotaPI?>&notaref;\x0a]x]]y]]]z]]\x0a
 elemend
 ok

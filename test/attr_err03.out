@@ -1,6 +1,6 @@
 
 elemstart a
 attrstart a
-data abc
+attrval abc
 attrend
 error

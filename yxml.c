@@ -143,18 +143,25 @@ static void yxml_setutf8(char *dest, unsigned ch) {
 }
 
 
-static inline int yxml_dataset(yxml_t *x, unsigned ch) {
+static inline int yxml_datacontent(yxml_t *x, unsigned ch) {
 	yxml_setchar(x->data, ch);
 	x->data[1] = 0;
-	return YXML_DATA;
+	return YXML_CONTENT;
 }
 
 
-static inline int yxml_datapi(yxml_t *x, unsigned ch) {
+static inline int yxml_datapi1(yxml_t *x, unsigned ch) {
+	yxml_setchar(x->data, ch);
+	x->data[1] = 0;
+	return YXML_PICONTENT;
+}
+
+
+static inline int yxml_datapi2(yxml_t *x, unsigned ch) {
 	x->data[0] = '?';
 	yxml_setchar(x->data+1, ch);
 	x->data[2] = 0;
-	return YXML_DATA;
+	return YXML_PICONTENT;
 }
 
 
@@ -162,7 +169,7 @@ static inline int yxml_datacd1(yxml_t *x, unsigned ch) {
 	x->data[0] = ']';
 	yxml_setchar(x->data+1, ch);
 	x->data[2] = 0;
-	return YXML_DATA;
+	return YXML_CONTENT;
 }
 
 
@@ -171,13 +178,15 @@ static inline int yxml_datacd2(yxml_t *x, unsigned ch) {
 	x->data[1] = ']';
 	yxml_setchar(x->data+2, ch);
 	x->data[3] = 0;
-	return YXML_DATA;
+	return YXML_CONTENT;
 }
 
 
 static inline int yxml_dataattr(yxml_t *x, unsigned ch) {
 	/* Normalize attribute values according to the XML spec section 3.3.3. */
-	return yxml_dataset(x, ch == 0x9 || ch == 0xa ? 0x20 : ch);
+	yxml_setchar(x->data, ch == 0x9 || ch == 0xa ? 0x20 : ch);
+	x->data[1] = 0;
+	return YXML_ATTRVAL;
 }
 
 
@@ -213,7 +222,6 @@ static void yxml_popstack(yxml_t *x) {
 static inline int yxml_elemstart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->elem, ch); }
 static inline int yxml_elemname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
 static inline int yxml_elemnameend(yxml_t *x, unsigned ch) { return YXML_ELEMSTART; }
-static inline int yxml_content    (yxml_t *x, unsigned ch) { return YXML_CONTENT; }
 
 
 /* Also used in yxml_elemcloseend(), since this function just removes the last
@@ -277,9 +285,9 @@ static int yxml_ref(yxml_t *x, unsigned ch) {
 }
 
 
-static int yxml_refend(yxml_t *x, unsigned ch) {
+static int yxml_refend(yxml_t *x, int ret) {
 	unsigned char *r = (unsigned char *)x->data;
-	ch = 0;
+	unsigned ch = 0;
 	if(*r == '#') {
 		if(r[1] == 'x')
 			for(r += 2; yxml_isHex((unsigned)*r); r++)
@@ -308,8 +316,12 @@ static int yxml_refend(yxml_t *x, unsigned ch) {
 	if(!ch || ch > 0x10FFFF || ch == 0xFFFE || ch == 0xFFFF || (ch-0xDFFF) < 0x7FF)
 		return YXML_EREF;
 	yxml_setutf8(x->data, ch);
-	return YXML_DATA;
+	return ret;
 }
+
+
+static inline int yxml_refcontent(yxml_t *x, unsigned ch) { return yxml_refend(x, YXML_CONTENT); }
+static inline int yxml_refattrval(yxml_t *x, unsigned ch) { return yxml_refend(x, YXML_ATTRVAL); }
 
 
 void yxml_init(yxml_t *x, char *stack, size_t stacksize) {
@@ -402,7 +414,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_ref(x, ch);
 		if(ch == (unsigned char)'\x3b') {
 			x->state = YXMLS_attr3;
-			return yxml_refend(x, ch);
+			return yxml_refattrval(x, ch);
 		}
 		break;
 	case YXMLS_cd0:
@@ -411,7 +423,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		if(yxml_isChar(ch))
-			return yxml_dataset(x, ch);
+			return yxml_datacontent(x, ch);
 		break;
 	case YXMLS_cd1:
 		if(ch == (unsigned char)']') {
@@ -425,7 +437,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_cd2:
 		if(ch == (unsigned char)']')
-			return yxml_dataset(x, ch);
+			return yxml_datacontent(x, ch);
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
 			return YXML_OK;
@@ -542,11 +554,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_elemnameend(x, ch)|yxml_content(x, ch);
+			return yxml_elemnameend(x, ch);
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_elemnameend(x, ch)|yxml_content(x, ch);
+			return yxml_elemnameend(x, ch);
 		}
 		break;
 	case YXMLS_elem1:
@@ -554,11 +566,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_content(x, ch);
+			return YXML_OK;
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_content(x, ch);
+			return YXML_OK;
 		}
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_attr0;
@@ -572,11 +584,11 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(ch == (unsigned char)'/') {
 			x->state = YXMLS_elem3;
-			return yxml_content(x, ch);
+			return YXML_OK;
 		}
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc2;
-			return yxml_content(x, ch);
+			return YXML_OK;
 		}
 		break;
 	case YXMLS_elem3:
@@ -783,14 +795,14 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return yxml_refstart(x, ch);
 		}
 		if(yxml_isChar(ch))
-			return yxml_dataset(x, ch);
+			return yxml_datacontent(x, ch);
 		break;
 	case YXMLS_misc2a:
 		if(yxml_isRef(ch))
 			return yxml_ref(x, ch);
 		if(ch == (unsigned char)'\x3b') {
 			x->state = YXMLS_misc2;
-			return yxml_refend(x, ch);
+			return yxml_refcontent(x, ch);
 		}
 		break;
 	case YXMLS_misc3:
@@ -825,7 +837,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		if(yxml_isChar(ch))
-			return yxml_dataset(x, ch);
+			return yxml_datapi1(x, ch);
 		break;
 	case YXMLS_pi3:
 		if(ch == (unsigned char)'>') {
@@ -834,7 +846,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		}
 		if(yxml_isChar(ch)) {
 			x->state = YXMLS_pi2;
-			return yxml_datapi(x, ch);
+			return yxml_datapi2(x, ch);
 		}
 		break;
 	case YXMLS_pi4:

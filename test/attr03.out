@@ -1,8 +1,7 @@
 
 elemstart a
 attrstart a
-data a   b
+attrval a   b
 attrend
-content
 elemend
 ok

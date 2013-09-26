@@ -33,32 +33,32 @@ typedef enum {
 	YXML_ESYN        = -1, /* Syntax error (unexpected byte)             */
 	YXML_OK          =  0, /* Character consumed, no new token present   */
 	YXML_ELEMSTART   =  1, /* Start of an element:   '<Tag ..'           */
-	YXML_CONTENT     =  2, /* Start of element content '.. />' or '.. >' */
-	YXML_ELEMSTCONT  =  3, /* Same as YXML_ELEMSTART|YXML_CONTENT  */
-	YXML_ELEMEND     =  4, /* End of an element:     '.. />' or '</Tag>' */
-	YXML_DATA        =  5, /* Attribute value or element/PI contents     */
-	YXML_ATTRSTART   =  6, /* Attribute:             'Name=..'           */
-	YXML_ATTREND     =  7, /* End of attribute       '.."'               */
-	YXML_PISTART     =  8, /* Start of a processing instruction          */
+	YXML_CONTENT     =  2, /* Element content                            */
+	YXML_ELEMEND     =  3, /* End of an element:     '.. />' or '</Tag>' */
+	YXML_ATTRSTART   =  4, /* Attribute:             'Name=..'           */
+	YXML_ATTRVAL     =  5, /* Attribute value                            */
+	YXML_ATTREND     =  6, /* End of attribute       '.."'               */
+	YXML_PISTART     =  7, /* Start of a processing instruction          */
+	YXML_PICONTENT   =  8, /* Content of a PI                            */
 	YXML_PIEND       =  9  /* End of a processing instruction            */
 } yxml_ret_t;
 
 /* When, exactly, are tokens returned?
  *
  * <TagName
- *   '>' ELEMSTART | CONTENT
- *   '/' ELEMSTART | CONTENT, '>' ELEMEND
+ *   '>' ELEMSTART
+ *   '/' ELEMSTART, '>' ELEMEND
  *   ' ' ELEMSTART
- *     '>' CONTENT
- *     '/' CONTENT, '>' ELEMEND
+ *     '>'
+ *     '/', '>' ELEMEND
  *     Attr
  *       '=' ATTRSTART
- *         "X DATA
- *           'Y'  DATA
- *             'Z'  DATA
+ *         "X ATTRVAL
+ *           'Y'  ATTRVAL
+ *             'Z'  ATTRVAL
  *               '"' ATTREND
- *                 '>' CONTENT
- *                 '/' CONTENT, '>' ELEMEND
+ *                 '>'
+ *                 '/', '>' ELEMEND
  *
  * </TagName
  *   '>' ELEMEND
@@ -70,14 +70,15 @@ typedef struct {
 
 	/* Name of the current element, zero-length if not in any element. Changed
 	 * after YXML_ELEMSTART. The pointer will remain valid up to and including
-	 * the next YXML_CONTENT, the pointed-to buffer will remain valid up to and
-	 * including the YXML_ELEMCLOSE for the corresponding element. */
+	 * the next non-YXML_ATTR* token, the pointed-to buffer will remain valid
+	 * up to and including the YXML_ELEMCLOSE for the corresponding element. */
 	char *elem;
 
-	/* The last read character(s) of an attribute value, element data, or
-	 * processing instruction. Changed after YXML_DATA and only valid until the
-	 * next yxml_parse() call. Usually, this string only consists of a single
-	 * byte, but multiple bytes are returned in the following cases:
+	/* The last read character(s) of an attribute value (YXML_ATTRVAL), element
+	 * data (YXML_CONTENT), or processing instruction (YXML_PICONTENT). Changed
+	 * after one of the respective YXML_ values is returned, and only valid
+	 * until the next yxml_parse() call. Usually, this string only consists of
+	 * a single byte, but multiple bytes are returned in the following cases:
 	 * - "<?SomePI ?x ?>": The two characters "?x"
 	 * - "<![CDATA[ ]x ]]>": The two characters "]x"
 	 * - "<![CDATA[ ]]x ]]>": The three characters "]]x"

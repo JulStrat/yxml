@@ -1,6 +1,6 @@
 
 elemstart xml
 attrstart version
-data 1.0
+attrval 1.0
 attrend
 error
