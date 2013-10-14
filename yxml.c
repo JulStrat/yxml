@@ -298,17 +298,15 @@ static int yxml_refend(yxml_t *x, int ret) {
 		if(*r)
 			ch = 0;
 	} else {
-		uint64_t ri;
-		memcpy(&ri, r, 8);
-		if(ri == *((uint64_t *)"lt\0\0\0\0\0"))
+		if(r[0] == 'l' && r[1] == 't' && !r[2])
 			ch = '<';
-		else if(ri == *((uint64_t *)"gt\0\0\0\0\0"))
+		else if(r[0] == 'g' && r[1] == 't' && !r[2])
 			ch = '>';
-		else if(ri == *((uint64_t *)"amp\0\0\0\0"))
+		else if(r[0] == 'a' && r[1] == 'm' && r[2] == 'p' && !r[3])
 			ch = '&';
-		else if(ri == *((uint64_t *)"apos\0\0\0"))
+		else if(r[0] == 'a' && r[1] == 'p' && r[2] == 'o' && r[3] == 's' && !r[4])
 			ch = '\'';
-		else if(ri == *((uint64_t *)"quot\0\0\0"))
+		else if(r[0] == 'q' && r[1] == 'u' && r[2] == 'o' && r[3] == 't' && !r[4])
 			ch = '"';
 	}
 
