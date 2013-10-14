@@ -23,6 +23,7 @@
 #include <yxml.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 
 static char stack[8*1024];
@@ -48,7 +49,7 @@ static void y_printstring(const char *str) {
 static void y_printtoken(yxml_t *x, const char *str) {
 	puts("");
 	if(verbose)
-		printf("t%03lu l%03u b%03lu: ", x->total, x->line, x->byte);
+		printf("t%03"PRIu64" l%03"PRIu32" b%03"PRIu64": ", x->total, x->line, x->byte);
 	printf("%s", str);
 }
 
