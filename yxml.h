@@ -115,10 +115,10 @@ typedef struct {
 } yxml_t;
 
 
-void yxml_init(yxml_t *x, char *stack, size_t stacksize);
+void yxml_init(yxml_t *, char *, size_t);
 
 
-yxml_ret_t yxml_parse(yxml_t *x, int ch);
+yxml_ret_t yxml_parse(yxml_t *, int);
 
 
 /* May be called after the last character has been given to yxml_parse().
@@ -127,7 +127,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int ch);
  * that don't end correctly. In particular, an error is returned when the XML
  * document did not contain a (complete) root element, or when the document
  * ended while in a comment or processing instruction. */
-yxml_ret_t yxml_eof(yxml_t *x);
+yxml_ret_t yxml_eof(yxml_t *);
 
 
 /* vim: set noet sw=4 ts=4: */
