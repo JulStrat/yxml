@@ -25,11 +25,10 @@
 
 
 typedef enum {
-	YXML_EEOF        = -6, /* Unexpected EOF                             */
-	YXML_EREF        = -5, /* Invalid character or entity reference (&whatever;) */
-	YXML_ECLOSE      = -4, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
-	YXML_ESTACK      = -3, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
-	YXML_EATTR       = -2, /* Too long attribute name                    */
+	YXML_EEOF        = -5, /* Unexpected EOF                             */
+	YXML_EREF        = -4, /* Invalid character or entity reference (&whatever;) */
+	YXML_ECLOSE      = -3, /* Close tag does not match open tag (<Tag> .. </OtherTag>) */
+	YXML_ESTACK      = -2, /* Stack overflow (too deeply nested tags or too long element/attribute name) */
 	YXML_ESYN        = -1, /* Syntax error (unexpected byte)             */
 	YXML_OK          =  0, /* Character consumed, no new token present   */
 	YXML_ELEMSTART   =  1, /* Start of an element:   '<Tag ..'           */
