@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* Full API documentation for this library can be found in the "yxml.pod" file
+ * in the yxml git repository, or online at http://dev.yorhel.nl/yxml/man */
 
 typedef enum {
 	YXML_EEOF        = -5, /* Unexpected EOF                             */

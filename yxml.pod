@@ -5,8 +5,6 @@ Yxml is a small non-validating and mostly conforming XML parser written in C.
 The latest version of yxml and this document can be found on
 L<http://dev.yorhel.nl/yxml>.
 
-B<This document is a work in progress, there's still some useful stuff missing.>
-
 =head1 Compiling yxml
 
 Due to the small size of yxml, the recommended way to use it is to copy the
@@ -174,8 +172,8 @@ in which these fields contain valid information is described in their
 respective sections below.
 
 The I<line>, I<byte> and I<total> fields are mainly useful for error reporting.
-When C<yxml_parse()> or C<yxml_eof()> returns with an error, these fields can
-be used to generate a useful error message. For example:
+When C<yxml_parse()> reports an error, these fields can be used to generate a
+useful error message. For example:
 
   printf("Parsing error at %s:%"PRIu32":%"PRIu64" byte offset %"PRIu64",
     filename, x->line, x->byte, x->total);
@@ -210,40 +208,230 @@ Miscellaneous syntax error.
 
 =back
 
+
+=head2 Handling Tokens
+
+The C<yxml_parse()> function will return tokens as they are found. When loading
+an XML document, it is important to know which tokens are returned in which
+situation and how to handle them.
+
+The following graph shows the (simplified) state machine of the parser to
+illustrate the order in which tokens are returned. The labels on the edge
+indicate the tokens that are returned by C<yxml_parse()>, with their C<YXML_>
+prefix removed.  The special return value C<YXML_OK> and error returns are not
+displayed.
+
+[html]<img src="/img/yxml-apistates.png" />É
+
+Tokens that the application is not interested in can be ignored safely. For
+example, if you are not interested in handling processing instructions, then
+the C<YXML_PISTART>, C<YXML_PICONTENT> and C<YXML_PIEND> tokens can be handled
+exactly as if they were an alias for C<YXML_OK>.
+
 =head3 Elements
 
 The C<YXML_ELEMSTART> and C<YXML_ELEMEND> tokens are returned when an XML
 element is opened and closed, respectively. When C<YXML_ELEMSTART> is returned,
 the I<elem> struct field will hold the name of the element. This field will be
-valid (i.e. keep pointing to the name of the opened element) until the end of
+valid (i.e. keeps pointing to the name of the opened element) until the end of
 the attribute list. That is, until any token other than those described in
 L</Attributes> is returned. Although the I<elem> pointer itself may be reused
 and modified while parsing the contents of the element, the buffer that I<elem>
 points to will remain valid up to and including the corresponding
 C<YXML_ELEMCLOSE>.
 
-Yxml will validate that elements properly nest and that the name of each
-closing tag properly matches that of the respective opening tag. The
-application may safely assume that each C<YXML_ELEMSTART> is properly matched
-with a C<YXML_ELEMCLOSE>, or that otherwise an error is returned. Furthermore,
-only a single root element is allowed. When the root element is closed, no
-further C<YXML_ELEMSTART> tokens will be returned.
+Yxml will verify that elements properly nest and that the name of each closing
+tag properly matches that of the respective opening tag. The application may
+safely assume that each C<YXML_ELEMSTART> is properly matched with a
+C<YXML_ELEMCLOSE>, or that otherwise an error is returned. Furthermore, only a
+single root element is allowed. When the root element is closed, no further
+C<YXML_ELEMSTART> tokens will be returned.
 
 No distinction is made between self-closing tags and elements with empty
 content. For example, both C<< <a/> >> and C<< <a></a> >> will result in the
-C<YXML_ELEMSTART> token (with C<elem="a">) followed by the C<YXML_ELEMEND>
-token.
+C<YXML_ELEMSTART> token (with C<elem="a">) followed by C<YXML_ELEMEND>.
 
 Element contents are returned in the form of the C<YXML_CONTENT> token and the
 I<data> field. This is described in more detail in L</Character Data>.
 
 =head3 Attributes
 
+Element attributes are passed using the C<YXML_ATTRSTART>, C<YXML_ATTRVAL> and
+C<YXML_ATTREND> tokens. The name of the attribute is available in the I<attr>
+field, which is available when C<YXML_ATTRSTART> is returned and valid up to
+and including the next C<YXML_ATTREND>.
+
+Yxml does not verify that attribute names are unique within a single element.
+It is thus possible that the same attribute will appear twice, possibly with a
+different value. The correct way to handle this situation is to stop parsing
+the rest of the document and to report an error, but if the application is not
+interested in all attributes, detecting duplicates in them may complicate the
+code and possibly even introduce security vulnerabilities (e.g. algorithmic
+complexity attacks in a hash table). As such, the best solution is to report an
+error when you can easily detect a duplicate attribute, but ignore duplicates
+that require more effort to be detected.
+
+The attribute value is returned with the C<YXML_ATTRVAL> token and the I<data>
+field. This is described in more detail in L</Character Data>.
+
 =head3 Processing Instructions
 
+Processing instructions are passed in similar fashion to attributes, and are
+passed using C<YXML_PISTART>, C<YXML_PICONTENT> and C<YXML_PIEND>. The target
+of the PI is available in the I<pi> field after C<YXML_PISTART> and remains
+valid up to (but excluding) the next C<YXML_PIEND> token.
+
+PI contents are returned as C<YXML_PICONTENT> tokens and using the I<data>
+field, described in more detail in L</Character Data>.
+
 =head3 Character Data
+
+Element contents (C<YXML_CONTENT>), attribute values (C<YXML_ATTRVAL>) and PI
+contents (C<YXML_PICONTENT>) are all passed to the application in small chunks
+through the I<data> field. Each time that C<yxml_parse()> returns one of these
+tokens, the I<data> field will contain one or more bytes of the element
+contents, attribute value or PI content. The string is zero-terminated, and its
+value is only valid until the next call to C<yxml_parse()>.
+
+Typically only a single byte is returned after each call, but multiple bytes
+can be returned in the following special cases:
+
+=over
+
+=item * Character references outside of the ASCII character range. When a
+character reference is encountered in element contents or in an attribute
+value, it is automatically replaced with the referenced character. For example,
+the XML string C<&#47;> is replaced with the single character "/". If the
+character value is above 127, its value is encoded in UTF-8 and then returned
+as a multi-byte string in the I<data> field. For example, the character
+reference C<&#xe7;> is returned as the C string "\xc3\xa9", which is the UTF-8
+encoding for the character "é". Character references are not expanded in PI
+contents.
+
+=item * The special character "]" in CDATA sections. When the "]" character is
+encountered inside a CDATA section, yxml can't immediately return it to the
+application because it does not know whether the character is part of the CDATA
+ending or whether it is still part of its contents. So it remembers the
+character for the next call to C<yxml_parse()>, and if it then turns out that
+the character was part of the CDATA contents, it returns both the "]" character
+and the following byte in the same I<data> string. Similarly, if two "]"
+characters appear in sequence as part of the CDATA content, then the two
+characters are returned in a single I<data> string together with the byte that
+follows. CDATA sections only appear in element contents, so this does not
+happen in attribute values or PI contents.
+
+=item * The special character "?" in PI contents. This is similar to the issue
+with "]" characters in CDATA sections. Yxml remembers a "?" character while
+parsing a PI, and then returns it together with the byte following it if it
+turned out to be part of the PI contents.
+
+=back
+
+Note that C<yxml_parse()> operates on bytes rather than characters. If the
+document is encoded in a multi-byte character encoding such as UTF-8, then each
+Unicode character that occupies more than a single byte will be broken up and
+its bytes processed individually. As a result, the bytes returned in the
+I<data> field may not necessarily represent a single Unicode character. To
+ensure that multi-byte characters are not broken up, the application can
+concatenate multiple data tokens to a single buffer before attempting to do
+further processing on the result.
+
+To make processing easier, an application may want to combine all the tokens
+into a single buffer. This can be easily implemented as follows:
+
+  SomeString attrval;
+  while(..) {
+    yxml_ret_t r = yxml_parse(x, ch);
+    switch(r) {
+    case YXML_ATTRSTART:
+      somestring_initialize(attrval);
+      break;
+    case YXML_ATTRVAL:
+      somestring_append(attrval, x->data);
+      break;
+    case YXML_ATTREND:
+      /* Now we have a full attribute. Its name is in x->attr, and its value is
+       * in the string 'attrval'. */
+      somestring_reset(attrval);
+      break;
+    }
+  }
+
+The C<SomeString> type and C<somestring_> functions are stubs for any string
+handling library of your choosing. When using Glib, for example, one could use
+the L<GString|https://developer.gnome.org/glib/stable/glib-Strings.html>
+type and the C<g_string_new()>, C<g_string_append()> and C<g_string_free()>
+functions. For a more lighter-weight string library there is also
+L<kstring.h in klib|https://github.com/attractivechaos/klib>, but the
+functionality required in the above example can easily be implemented in a few
+lines of pure C, too.
+
+When buffering data into an ever-growing string, as done in the previous
+example, one should be careful to protect against memory exhaustion. This can
+be done trivially by limiting the size of the total XML document or the maximum
+length of the buffer. If you want to extract information from an XML document
+that might not fit into memory, but you know that the information you care
+about is limited in size and is only stored in specific attributes or elements,
+you can choose to ignore data you don't care about. For example, if you only
+want to extract the "Size" attribute and you know that its value is never
+larger than 63 bytes, you can limit your code to read only that value and store
+it into a small pre-allocated buffer:
+
+  char sizebuf[64], *sizecur = NULL, *tmp;
+  while(..) {
+    yxml_ret_t r = yxml_parse(x, ch);
+    switch(r) {
+    case YXML_ATTRSTART:
+      if(strcmp(x->attr, "Size") == 0)
+        sizecur = sizebuf;
+      break;
+    case YXML_ATTRVAL:
+      if(!sizecur) /* Are we in the "Size" attribute? */
+        break;
+      /* Append x->data to sizecur while there is space */
+      tmp = x->data;
+      while(*tmp && sizecur < sizebuf+sizeof(sizebuf))
+        *(sizecur++) = *(tmp++);
+      if(sizecur == sizebuf+sizeof(sizebuf))
+        exit(1); /* Too long attribute value, handle error */
+      *sizecur = 0;
+      break;
+    case YXML_ATTREND:
+      if(sizecur) {
+        /* Now we have the value of the "Size" attribute in sizebuf */
+        sizecur = NULL;
+      }
+      break;
+    }
+  }
 
 
 =head2 Finalization
 
+  yxml_t *x; /* An initialized state */
+  yxml_ret_t r = yxml_eof(x);
+  if(r < 0)
+    exit(1); /* Handle error */
+  else
+    /* No errors in the XML document */
 
+Because C<yxml_parse()> does not know when the end of the XML document has been
+reached, it is unable to detect certain errors in the document. This is why,
+after successfully parsing a complete document with C<yxml_parse()>, the
+application should call C<yxml_eof()> to perform some extra checks.
+
+C<yxml_eof()> will return C<YXML_OK> if the parsed XML document is well-formed,
+C<YXML_EEOF> otherwise. The following errors are not detected by
+C<yxml_parse()> but will result in an error on C<yxml_eof()>:
+
+=over
+
+=item * The XML document did not contain a root element (e.g. an empty
+file).
+
+=item * The XML root element has not been closed (e.g. "C<< <a> .. >>").
+
+=item * The XML document ended in the middle of a comment or PI (e.g.
+"C<< <a/><!-- .. >>").
+
+=back
