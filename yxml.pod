@@ -28,7 +28,7 @@ and three functions:
   typedef enum { /* .. */ } yxml_ret_t;
   typedef struct { /* .. */ } yxml_t;
 
-  void yxml_init(yxml_t *x, char *buf, size_t bufsize);
+  void yxml_init(yxml_t *x, void *buf, size_t bufsize);
   yxml_ret_t yxml_parse(yxml_t *x, int ch);
   yxml_ret_t yxml_eof(yxml_t *x);
 
@@ -50,7 +50,7 @@ on each character of the input file.
 =head2 Initialization
 
   #define BUFSIZE 4096
-  char *buf = malloc(BUFSIZE);
+  void *buf = malloc(BUFSIZE);
   yxml_t x;
   yxml_init(&x, buf, BUFSIZE);
 

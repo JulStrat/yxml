@@ -322,10 +322,10 @@ static inline int yxml_refcontent(yxml_t *x, unsigned ch) { return yxml_refend(x
 static inline int yxml_refattrval(yxml_t *x, unsigned ch) { return yxml_refend(x, YXML_ATTRVAL); }
 
 
-void yxml_init(yxml_t *x, char *stack, size_t stacksize) {
+void yxml_init(yxml_t *x, void *stack, size_t stacksize) {
 	memset(x, 0, sizeof(*x));
 	x->line = 1;
-	x->stack = (unsigned char *)stack;
+	x->stack = stack;
 	x->stacksize = stacksize;
 	*x->stack = 0;
 	x->elem = x->pi = (char *)x->stack;

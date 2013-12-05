@@ -120,7 +120,7 @@ typedef struct {
 } yxml_t;
 
 
-void yxml_init(yxml_t *, char *, size_t);
+void yxml_init(yxml_t *, void *, size_t);
 
 
 yxml_ret_t yxml_parse(yxml_t *, int);
