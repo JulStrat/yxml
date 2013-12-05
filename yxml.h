@@ -20,6 +20,9 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef YXML_H
+#define YXML_H
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -131,5 +134,6 @@ yxml_ret_t yxml_parse(yxml_t *, int);
  * ended while in a comment or processing instruction. */
 yxml_ret_t yxml_eof(yxml_t *);
 
+#endif
 
 /* vim: set noet sw=4 ts=4: */
