@@ -263,7 +263,7 @@ void yxml_init(yxml_t *x, void *stack, size_t stacksize) {
 	x->stack = stack;
 	x->stacksize = stacksize;
 	*x->stack = 0;
-	x->elem = x->pi = (char *)x->stack;
+	x->elem = x->pi = x->attr = (char *)x->stack;
 	x->state = YXMLS_init;
 }
 
