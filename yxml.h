@@ -120,6 +120,10 @@ typedef struct {
 } yxml_t;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void yxml_init(yxml_t *, void *, size_t);
 
 
@@ -133,6 +137,11 @@ yxml_ret_t yxml_parse(yxml_t *, int);
  * document did not contain a (complete) root element, or when the document
  * ended while in a comment or processing instruction. */
 yxml_ret_t yxml_eof(yxml_t *);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 
