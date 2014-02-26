@@ -23,6 +23,7 @@
 #include <yxml.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 
 
@@ -57,6 +58,7 @@ static void y_printtoken(yxml_t *x, const char *str) {
 static void y_printres(yxml_t *x, yxml_ret_t r) {
 	static int indata;
 	int nextdata = 0;
+
 	switch(r) {
 	case YXML_OK:
 		if(verbose) {
@@ -68,6 +70,8 @@ static void y_printres(yxml_t *x, yxml_ret_t r) {
 	case YXML_ELEMSTART:
 		y_printtoken(x, "elemstart ");
 		y_printstring(x->elem);
+		if(yxml_symlen(x, x->elem) != strlen(x->elem))
+			y_printtoken(x, "assertfail: elem lengths don't match");
 		if(r & YXML_CONTENT)
 			y_printtoken(x, "content");
 		break;
@@ -77,6 +81,8 @@ static void y_printres(yxml_t *x, yxml_ret_t r) {
 	case YXML_ATTRSTART:
 		y_printtoken(x, "attrstart ");
 		y_printstring(x->attr);
+		if(yxml_symlen(x, x->attr) != strlen(x->attr))
+			y_printtoken(x, "assertfail: attr lengths don't match");
 		break;
 	case YXML_ATTREND:
 		y_printtoken(x, "attrend");
@@ -92,6 +98,8 @@ static void y_printres(yxml_t *x, yxml_ret_t r) {
 	case YXML_PISTART:
 		y_printtoken(x, "pistart ");
 		y_printstring(x->pi);
+		if(yxml_symlen(x, x->pi) != strlen(x->pi))
+			y_printtoken(x, "assertfail: pi lengths don't match");
 		break;
 	case YXML_PIEND:
 		y_printtoken(x, "piend");

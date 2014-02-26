@@ -143,6 +143,16 @@ yxml_ret_t yxml_eof(yxml_t *);
 #endif
 
 
+/* Returns the length of the element name (x->elem), attribute name (x->attr),
+ * or PI name (x->pi). This function should ONLY be used directly after the
+ * YXML_ELEMSTART, YXML_ATTRSTART or YXML_PISTART (respectively) tokens have
+ * been returned by yxml_parse(), calling this at any other time may not give
+ * the correct results. This function should also NOT be used on strings other
+ * than x->elem, x->attr or x->pi. */
+static inline size_t yxml_symlen(yxml_t *x, const char *s) {
+	return (x->stack + x->stacklen) - (const unsigned char*)s;
+}
+
 #endif
 
 /* vim: set noet sw=4 ts=4: */
