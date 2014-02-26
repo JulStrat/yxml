@@ -26,6 +26,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#if defined(_MSC_VER) && !defined(__cplusplus) && !defined(inline)
+#define inline __inline
+#endif
+
 /* Full API documentation for this library can be found in the "yxml.pod" file
  * in the yxml git repository, or online at http://dev.yorhel.nl/yxml/man */
 
