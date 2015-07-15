@@ -238,12 +238,12 @@ the attribute list. That is, until any token other than those described in
 L</Attributes> is returned. Although the I<elem> pointer itself may be reused
 and modified while parsing the contents of the element, the buffer that I<elem>
 points to will remain valid up to and including the corresponding
-C<YXML_ELEMCLOSE>.
+C<YXML_ELEMEND>.
 
 Yxml will verify that elements properly nest and that the name of each closing
 tag properly matches that of the corresponding opening tag. The application may
 safely assume that each C<YXML_ELEMSTART> is properly matched with a
-C<YXML_ELEMCLOSE>, or that otherwise an error is returned. Furthermore, only a
+C<YXML_ELEMEND>, or that otherwise an error is returned. Furthermore, only a
 single root element is allowed. When the root element is closed, no further
 C<YXML_ELEMSTART> tokens will be returned.
 

@@ -79,7 +79,7 @@ typedef struct {
 	/* Name of the current element, zero-length if not in any element. Changed
 	 * after YXML_ELEMSTART. The pointer will remain valid up to and including
 	 * the next non-YXML_ATTR* token, the pointed-to buffer will remain valid
-	 * up to and including the YXML_ELEMCLOSE for the corresponding element. */
+	 * up to and including the YXML_ELEMEND for the corresponding element. */
 	char *elem;
 
 	/* The last read character(s) of an attribute value (YXML_ATTRVAL), element
