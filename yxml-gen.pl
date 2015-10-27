@@ -44,10 +44,6 @@ sub condtoc {
 sub acttoc {
   my $next = shift;
   my(@c, @r);
-  # XXX: Return values of function calls are or'ed together to create the
-  # return value of yxml_parse(). This only works when the function do not
-  # return an error code. Functions that may return an error should NOT be
-  # called in the same state as other functions.
   for(@_) {
     push @r, "yxml_$1(x, ch)" if /^([a-z0-9_]+)$/;
     push @c, "x->$1 = ch" if /^\$(.+)$/;
@@ -60,9 +56,10 @@ sub acttoc {
     }
     push @c, "x->nextstate = YXMLS_$_" if s/^@//;
   }
+  die "Can't call multiple functions in a single state." if @r > 1;
   (
     map("$_;", @c),
-    'return ' . (@r ? join('|', @r) : 'YXML_OK') . ';'
+    'return ' . ($r[0] || 'YXML_OK') . ';'
   )
 }
 
@@ -98,7 +95,7 @@ sub readmachine {
     s/^ //;
     s/ $//;
     next if !$_ || /^#/;
-    die "Unrecognized line: $_\n" and next if !/^([a-z0-9]+) (.+)$/;
+    die("Unrecognized line: $_\n"), next if !/^([a-z0-9]+) (.+)$/;
     my($state, @desc) = ($1, split / *; */, $2);
     die "State '$state' specified more than once.\n" if $states{$state};
     $states{$state} = gencode $state, @desc;
