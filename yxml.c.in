@@ -201,6 +201,7 @@ static inline int yxml_attrvalend (yxml_t *x, unsigned ch) { yxml_popstack(x); r
 
 static inline int yxml_pistart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->pi, ch); }
 static inline int yxml_piname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_piabort  (yxml_t *x, unsigned ch) { yxml_popstack(x); return YXML_OK; }
 static inline int yxml_pinameend(yxml_t *x, unsigned ch) {
 	return (x->pi[0]|32) == 'x' && (x->pi[1]|32) == 'm' && (x->pi[2]|32) == 'l' && !x->pi[3] ? YXML_ESYN : YXML_PISTART;
 }

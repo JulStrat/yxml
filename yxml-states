@@ -75,38 +75,41 @@ le3        '!' @misc3 comment0; '?' @misc3 pi0
 
 lee1       '-' @misc1 comment1; 'D' "OCTYPE" dt0
 lee2       '-' @misc2 comment1; '[' "CDATA[" cd0
-leq0       'x' "ml" xmldecl0; NameStart @misc1 pistart pi1
+leq0       'x' @misc1 pistart xmldecl0; NameStart @misc1 pistart pi1
 
 
-# XMLDecl, starting from '<?xml', returns to misc1
-xmldecl0    SP xmldecl1
-xmldecl1    SP xmldecl1; 'v' "ersion" ver0
-xmldecl2    SP xmldecl3; '?' xmldecl7
-xmldecl3    SP xmldecl3; '?' xmldecl7; 'e' "ncoding" enc0; 's' "tandalone" std0
-xmldecl4    SP xmldecl5; '?' xmldecl7
-xmldecl5    SP xmldecl5; '?' xmldecl7; 's' "tandalone" std0
-xmldecl6    SP xmldecl6; '?' xmldecl7
-xmldecl7    '>' misc1
+# XMLDecl, starting from '<?x', returns to misc1.
+# Interleaves some parts with pi because a non-<?xml is just a PI rather than an XMLDecl.
+xmldecl0    'm' piname xmldecl1; Name piname pi1; '?' pinameend pi4; SP pinameend pi2
+xmldecl1    'l' piname xmldecl2; Name piname pi1; '?' pinameend pi4; SP pinameend pi2
+xmldecl2    SP piabort xmldecl3; Name piname pi1
+xmldecl3    SP xmldecl3; 'v' "ersion" ver0
+xmldecl4    SP xmldecl5; '?' xmldecl9
+xmldecl5    SP xmldecl5; '?' xmldecl9; 'e' "ncoding" enc0; 's' "tandalone" std0
+xmldecl6    SP xmldecl7; '?' xmldecl9
+xmldecl7    SP xmldecl7; '?' xmldecl9; 's' "tandalone" std0
+xmldecl8    SP xmldecl8; '?' xmldecl9
+xmldecl9    '>' misc1
 
-# VersionInfo, after 'version', returns to xmldecl2
+# VersionInfo, after 'version', returns to xmldecl4
 ver0       SP ver0; '=' ver1
 ver1       SP ver1; '\''|'"' $quote "1." ver2
 ver2       Num ver3;
-ver3       Num ver3; $quote xmldecl2
+ver3       Num ver3; $quote xmldecl4
 
-# EncodingDecl, after 'e', returns to xmldecl4
+# EncodingDecl, after 'e', returns to xmldecl6
 # TODO: Pass the encoding value to the application?
 enc0       SP enc0; '=' enc1
 enc1       SP enc1; '\''|'"' $quote enc2
 enc2       Alpha enc3
-enc3       EncName enc3; $quote xmldecl4
+enc3       EncName enc3; $quote xmldecl6
 
-# SDDecl, after 'standalone', returns to xmldecl6
+# SDDecl, after 'standalone', returns to xmldecl8
 # TODO: Pass the standalone flag to the application?
 std0       SP std0; '=' std1
 std1       SP std1; '\''|'"' $quote std2
 std2       'y' "es" std3; 'n' "o" std3
-std3       $quote xmldecl6
+std3       $quote xmldecl8
 
 
 # Comment, after '<!', returns to @

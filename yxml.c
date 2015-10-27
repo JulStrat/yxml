@@ -89,7 +89,9 @@ typedef enum {
 	YXMLS_xmldecl4,
 	YXMLS_xmldecl5,
 	YXMLS_xmldecl6,
-	YXMLS_xmldecl7
+	YXMLS_xmldecl7,
+	YXMLS_xmldecl8,
+	YXMLS_xmldecl9
 } yxml_state_t;
 
 
@@ -265,6 +267,7 @@ static inline int yxml_attrvalend (yxml_t *x, unsigned ch) { yxml_popstack(x); r
 
 static inline int yxml_pistart  (yxml_t *x, unsigned ch) { return yxml_pushstack(x, &x->pi, ch); }
 static inline int yxml_piname   (yxml_t *x, unsigned ch) { return yxml_pushstackc(x, ch); }
+static inline int yxml_piabort  (yxml_t *x, unsigned ch) { yxml_popstack(x); return YXML_OK; }
 static inline int yxml_pinameend(yxml_t *x, unsigned ch) {
 	return (x->pi[0]|32) == 'x' && (x->pi[1]|32) == 'm' && (x->pi[2]|32) == 'l' && !x->pi[3] ? YXML_ESYN : YXML_PISTART;
 }
@@ -621,7 +624,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isEncName(ch))
 			return YXML_OK;
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl4;
+			x->state = YXMLS_xmldecl6;
 			return YXML_OK;
 		}
 		break;
@@ -755,10 +758,9 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_leq0:
 		if(ch == (unsigned char)'x') {
-			x->state = YXMLS_string;
-			x->nextstate = YXMLS_xmldecl0;
-			x->string = (unsigned char *)"ml";
-			return YXML_OK;
+			x->state = YXMLS_xmldecl0;
+			x->nextstate = YXMLS_misc1;
+			return yxml_pistart(x, ch);
 		}
 		if(yxml_isNameStart(ch)) {
 			x->state = YXMLS_pi1;
@@ -885,7 +887,7 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		break;
 	case YXMLS_std3:
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl6;
+			x->state = YXMLS_xmldecl8;
 			return YXML_OK;
 		}
 		break;
@@ -918,17 +920,57 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 		if(yxml_isNum(ch))
 			return YXML_OK;
 		if(x->quote == ch) {
-			x->state = YXMLS_xmldecl2;
+			x->state = YXMLS_xmldecl4;
 			return YXML_OK;
 		}
 		break;
 	case YXMLS_xmldecl0:
-		if(yxml_isSP(ch)) {
+		if(ch == (unsigned char)'m') {
 			x->state = YXMLS_xmldecl1;
-			return YXML_OK;
+			return yxml_piname(x, ch);
+		}
+		if(yxml_isName(ch)) {
+			x->state = YXMLS_pi1;
+			return yxml_piname(x, ch);
+		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi4;
+			return yxml_pinameend(x, ch);
+		}
+		if(yxml_isSP(ch)) {
+			x->state = YXMLS_pi2;
+			return yxml_pinameend(x, ch);
 		}
 		break;
 	case YXMLS_xmldecl1:
+		if(ch == (unsigned char)'l') {
+			x->state = YXMLS_xmldecl2;
+			return yxml_piname(x, ch);
+		}
+		if(yxml_isName(ch)) {
+			x->state = YXMLS_pi1;
+			return yxml_piname(x, ch);
+		}
+		if(ch == (unsigned char)'?') {
+			x->state = YXMLS_pi4;
+			return yxml_pinameend(x, ch);
+		}
+		if(yxml_isSP(ch)) {
+			x->state = YXMLS_pi2;
+			return yxml_pinameend(x, ch);
+		}
+		break;
+	case YXMLS_xmldecl2:
+		if(yxml_isSP(ch)) {
+			x->state = YXMLS_xmldecl3;
+			return yxml_piabort(x, ch);
+		}
+		if(yxml_isName(ch)) {
+			x->state = YXMLS_pi1;
+			return yxml_piname(x, ch);
+		}
+		break;
+	case YXMLS_xmldecl3:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'v') {
@@ -938,21 +980,21 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl2:
+	case YXMLS_xmldecl4:
 		if(yxml_isSP(ch)) {
-			x->state = YXMLS_xmldecl3;
+			x->state = YXMLS_xmldecl5;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl7;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl3:
+	case YXMLS_xmldecl5:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl7;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'e') {
@@ -968,21 +1010,21 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl4:
+	case YXMLS_xmldecl6:
 		if(yxml_isSP(ch)) {
-			x->state = YXMLS_xmldecl5;
+			x->state = YXMLS_xmldecl7;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl7;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl5:
+	case YXMLS_xmldecl7:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl7;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		if(ch == (unsigned char)'s') {
@@ -992,15 +1034,15 @@ yxml_ret_t yxml_parse(yxml_t *x, int _ch) {
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl6:
+	case YXMLS_xmldecl8:
 		if(yxml_isSP(ch))
 			return YXML_OK;
 		if(ch == (unsigned char)'?') {
-			x->state = YXMLS_xmldecl7;
+			x->state = YXMLS_xmldecl9;
 			return YXML_OK;
 		}
 		break;
-	case YXMLS_xmldecl7:
+	case YXMLS_xmldecl9:
 		if(ch == (unsigned char)'>') {
 			x->state = YXMLS_misc1;
 			return YXML_OK;
