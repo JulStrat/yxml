@@ -426,3 +426,22 @@ function should **ONLY** be used directly after the `YXML_ELEMSTART`,
 `yxml_parse()`, calling this function at any other time may not give the
 correct results. This function should **NOT** be used on strings other than
 `x->elem`, `x->attr` or `x->pi`.
+
+
+# Encoding considerations
+
+Yxml operates on bytes and assumes that the input XML document has been encoded
+in an ASCII-compatible encoding (i.e. byte values below 128 are interpreted as
+ASCII). Beyond that, yxml does **not** validate that the input XML document
+conforms to any specific encoding - in this sense it follows the
+garbage-in-garbage-out principle.  All strings returned by the yxml API will
+have the same encoding as the input XML document, with the exception of
+character references outside of the ASCII character range: those are encoded
+and returned as UTF-8 strings.
+
+If character encoding matters to your application (it likely does), you should
+either make sure that the input XML document as a whole is valid UTF-8 or you
+should perform UTF-8 validation on individual strings returned by the yxml API.
+The former approach is the safest and easiest, but the latter approach allows
+you to still extract useful information out of a document with an invalid
+encoding.
