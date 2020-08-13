@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/JulStrat/yxml.png?branch=grow-stack)](https://travis-ci.org/JulStrat/yxml)
+
 % Yxml Manual
 
 # Introduction
